@@ -72,6 +72,7 @@ function updateTypes(types: ITypeInfo[]) {
     for (const dep in type.packageJSON.dependencies) {
       for (const possibleType of types) {
         if (possibleType.repo.name === dep && possibleType.typePath) {
+          console.log(`Syncing ${dep} to ${type.repo.name}`);
           tasks.push((next) => {
             copyDir(possibleType.repo.path, join(type.repo.path, 'node_modules', dep), next);
           });

@@ -59,6 +59,7 @@ function updateTypes(types) {
         var _loop_2 = function (dep) {
             var _loop_3 = function (possibleType) {
                 if (possibleType.repo.name === dep && possibleType.typePath) {
+                    console.log("Syncing " + dep + " to " + type.repo.name);
                     tasks.push(function (next) {
                         utils_1.copyDir(possibleType.repo.path, path_1.join(type.repo.path, 'node_modules', dep), next);
                     });
