@@ -23,32 +23,30 @@ SOFTWARE.
 */
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var fs_1 = require("fs");
+var utils_1 = require("../utils");
 var path_1 = require("path");
 var semver_1 = require("semver");
 var child_process_1 = require("child_process");
 var chalk_1 = require("chalk");
 function run(config) {
-    var libraries = fs_1.readdirSync(config.workspacePath).filter(function (file) {
-        return fs_1.existsSync(path_1.join(config.workspacePath, file, 'package.json'));
-    });
+    var repos = utils_1.getRepoList();
     var dependencyMap = {};
-    for (var _i = 0, libraries_1 = libraries; _i < libraries_1.length; _i++) {
-        var library = libraries_1[_i];
+    for (var _i = 0, repos_1 = repos; _i < repos_1.length; _i++) {
+        var repo = repos_1[_i];
         // tslint:disable-next-line:no-require-imports
-        var packagejson = require(path_1.join(config.workspacePath, library, 'package.json'));
-        dependencyMap[library] = {
+        var packagejson = require(path_1.join(repo.path, 'package.json'));
+        dependencyMap[repo.name] = {
             version: packagejson.version,
             dependencies: {},
             uncommittedChanges: false,
             unpublishedChanges: false
         };
     }
-    for (var _a = 0, libraries_2 = libraries; _a < libraries_2.length; _a++) {
-        var library = libraries_2[_a];
+    for (var _a = 0, repos_2 = repos; _a < repos_2.length; _a++) {
+        var repo = repos_2[_a];
         // tslint:disable-next-line:no-require-imports
-        var packagejson = require(path_1.join(config.workspacePath, library, 'package.json'));
-        var libraryDef = dependencyMap[library];
+        var packagejson = require(path_1.join(repo.path, 'package.json'));
+        var libraryDef = dependencyMap[repo.name];
         for (var dep in packagejson.dependencies) {
             if (dependencyMap[dep]) {
                 libraryDef.dependencies[dep] = {

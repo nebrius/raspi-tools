@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import { IConfig } from '../utils';
-import { readdirSync, existsSync } from 'fs';
+import { getRepoList, IConfig } from '../utils';
 import { join } from 'path';
 import { satisfies } from 'semver';
 import { execSync } from 'child_process';
@@ -44,16 +43,14 @@ interface IDependencyMapEntry {
 
 export function run(config: IConfig) {
 
-  const libraries = readdirSync(config.workspacePath).filter((file) => {
-    return existsSync(join(config.workspacePath, file, 'package.json'));
-  });
+  const repos = getRepoList();
 
   const dependencyMap: { [ dependency: string ]: IDependencyMapEntry } = {};
 
-  for (const library of libraries) {
+  for (const repo of repos) {
     // tslint:disable-next-line:no-require-imports
-    const packagejson = require(join(config.workspacePath, library, 'package.json'));
-    dependencyMap[library] = {
+    const packagejson = require(join(repo.path, 'package.json'));
+    dependencyMap[repo.name] = {
       version: packagejson.version,
       dependencies: {},
       uncommittedChanges: false,
@@ -61,10 +58,10 @@ export function run(config: IConfig) {
     };
   }
 
-  for (const library of libraries) {
+  for (const repo of repos) {
     // tslint:disable-next-line:no-require-imports
-    const packagejson = require(join(config.workspacePath, library, 'package.json'));
-    const libraryDef = dependencyMap[library];
+    const packagejson = require(join(repo.path, 'package.json'));
+    const libraryDef = dependencyMap[repo.name];
     for (const dep in packagejson.dependencies) {
       if (dependencyMap[dep]) {
         libraryDef.dependencies[dep] = {
