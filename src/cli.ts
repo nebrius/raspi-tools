@@ -25,6 +25,7 @@ SOFTWARE.
 import * as yargs from 'yargs';
 import { run as runAnalyzeDeps } from './commands/analyze_deps';
 import { run as runUpdateTypes } from './commands/update_types';
+import { run as runSync } from './commands/sync';
 import { init, IConfig } from './utils'
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
@@ -72,6 +73,27 @@ yargs.usage('Usage: raspi-tools <command> [options]')
         runUpdateTypes();
       }
     })
+    .command({
+      command: 'sync',
+      aliases: [ 's' ],
+      describe: 'Syncs a repo to a raspberry pi',
+      builder(yargs) {
+        return yargs
+          .option('repo', {
+            alias: 'r',
+            describe: 'The name of the repo to sync, e.g. "raspi-gpio"'
+          })
+          .option('ip', {
+            alias: 'i',
+            describe: 'The IP address of the Raspberry Pi'
+          })
+          .demandOption([ 'repo', 'ip' ]);
+      },
+      handler(argv) {
+        runSync(config, argv.repo, argv.ip);
+      }
+    })
+    .demandCommand(1, 'You must specify a command with this tool')
     .help('h')
     .alias('h', 'help')
     .argv;

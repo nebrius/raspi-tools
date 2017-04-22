@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var yargs = require("yargs");
 var analyze_deps_1 = require("./commands/analyze_deps");
 var update_types_1 = require("./commands/update_types");
+var sync_1 = require("./commands/sync");
 var utils_1 = require("./utils");
 var fs_1 = require("fs");
 var path_1 = require("path");
@@ -69,6 +70,27 @@ yargs.usage('Usage: raspi-tools <command> [options]')
         update_types_1.run();
     }
 })
+    .command({
+    command: 'sync',
+    aliases: ['s'],
+    describe: 'Syncs a repo to a raspberry pi',
+    builder: function (yargs) {
+        return yargs
+            .option('repo', {
+            alias: 'r',
+            describe: 'The name of the repo to sync, e.g. "raspi-gpio"'
+        })
+            .option('ip', {
+            alias: 'i',
+            describe: 'The IP address of the Raspberry Pi'
+        })
+            .demandOption(['repo', 'ip']);
+    },
+    handler: function (argv) {
+        sync_1.run(config, argv.repo, argv.ip);
+    }
+})
+    .demandCommand(1, 'You must specify a command with this tool')
     .help('h')
     .alias('h', 'help')
     .argv;
