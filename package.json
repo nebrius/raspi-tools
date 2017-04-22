@@ -2,7 +2,10 @@
   "name": "raspi-tools",
   "version": "1.0.0",
   "description": "A collection of tools for developing raspi-io",
-  "bin": "./bin/raspi-tools.js",
+  "bin": {
+    "raspi-tools": "./bin/raspi-tools.js",
+    "rt": "./bin/raspi-tools.js"
+  },
   "scripts": {
     "prebuild": "tslint src/**/*.ts",
     "build": "tsc",
