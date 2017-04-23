@@ -29,10 +29,10 @@ var semver_1 = require("semver");
 var child_process_1 = require("child_process");
 var chalk_1 = require("chalk");
 function run(config) {
-    var repos = utils_1.getRepoList();
+    var repos = utils_1.getReposInfo();
     var dependencyMap = {};
-    for (var _i = 0, repos_1 = repos; _i < repos_1.length; _i++) {
-        var repo = repos_1[_i];
+    for (var repoName in repos) {
+        var repo = repos[repoName];
         // tslint:disable-next-line:no-require-imports
         var packagejson = require(path_1.join(repo.path, 'package.json'));
         dependencyMap[repo.name] = {
@@ -42,8 +42,8 @@ function run(config) {
             unpublishedChanges: false
         };
     }
-    for (var _a = 0, repos_2 = repos; _a < repos_2.length; _a++) {
-        var repo = repos_2[_a];
+    for (var repoName in repos) {
+        var repo = repos[repoName];
         // tslint:disable-next-line:no-require-imports
         var packagejson = require(path_1.join(repo.path, 'package.json'));
         var libraryDef = dependencyMap[repo.name];

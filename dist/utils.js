@@ -29,18 +29,84 @@ var async_1 = require("async");
 var rimraf = require("rimraf");
 var mkdirp = require("mkdirp");
 var config;
-var repoList;
-function init(newConfig) {
+var reposInfo = {};
+;
+function init(newConfig, cb) {
+    // Store the config for later use
     config = newConfig;
-    repoList = fs_1.readdirSync(config.workspacePath)
-        .map(function (name) { return ({ name: name, path: path_1.join(config.workspacePath, name) }); })
-        .filter(function (repo) { return repo.name !== 'raspi-tools' && fs_1.existsSync(path_1.join(repo.path, 'package.json')); });
+    async_1.parallel(fs_1.readdirSync(config.workspacePath).map(function (name) { return function (next) {
+        // First, we exclude this tool from the list
+        if (name === 'raspi-tools') {
+            next();
+            return;
+        }
+        // Next, let's create the basic repo info (it may be discarded)
+        var repoInfo = {
+            name: name,
+            path: path_1.join(config.workspacePath, name),
+            typeDeclarationPath: '',
+            packageJSON: {},
+            dependencies: {}
+        };
+        // Next we check if package.json exists
+        var packageJSONPath = path_1.join(repoInfo.path, 'package.json');
+        fs_1.exists(packageJSONPath, function (packageJSONExists) {
+            if (!packageJSONExists) {
+                next();
+                return;
+            }
+            // Now we read in package.json
+            fs_1.readFile(packageJSONPath, 'utf8', function (err, packgeJSONContents) {
+                if (err) {
+                    console.error(err);
+                    process.exit(-1);
+                }
+                try {
+                    repoInfo.packageJSON = JSON.parse(packgeJSONContents);
+                }
+                catch (e) {
+                    console.error("Could not parse package.json for " + repoInfo.name + ": " + e);
+                    process.exit(-1);
+                }
+                // At this point, we know we have a valid repo, so save it
+                reposInfo[repoInfo.name] = repoInfo;
+                // Next, check if there are type declarations
+                if (repoInfo.packageJSON.types) {
+                    fs_1.exists(path_1.join(repoInfo.path, repoInfo.packageJSON.types), function (typeDeclarationsExist) {
+                        if (!typeDeclarationsExist) {
+                            console.error("Type declaration file \"" + repoInfo.packageJSON.types + "\" does not exist");
+                            process.exit(-1);
+                        }
+                        repoInfo.typeDeclarationPath = repoInfo.packageJSON.types;
+                        next();
+                    });
+                }
+                else {
+                    next();
+                }
+            });
+        });
+    }; }), function () {
+        for (var repoName in reposInfo) {
+            var repoInfo = reposInfo[repoName];
+            if (repoInfo.packageJSON.dependencies) {
+                for (var dep in repoInfo.packageJSON.dependencies) {
+                    if (dep in reposInfo) {
+                        repoInfo.dependencies[dep] = reposInfo[dep];
+                    }
+                }
+            }
+        }
+        cb();
+    });
 }
 exports.init = init;
-function getRepoList() {
-    return repoList;
+// OH OH OH, new tool that pulls in type declaration files and automatically generates raspi-types package.
+// Look into renaming packages in npm
+function getReposInfo() {
+    return reposInfo;
 }
-exports.getRepoList = getRepoList;
+exports.getReposInfo = getReposInfo;
 function recursiveCopy(sourcePath, destinationPath, cb) {
     fs_1.readdir(sourcePath, function (err, files) {
         if (err) {

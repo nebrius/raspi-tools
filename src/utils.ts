@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import { readdirSync, exists, existsSync, readdir, stat, createReadStream, createWriteStream } from 'fs';
+import { readdirSync, exists, readdir, readFile, stat, createReadStream, createWriteStream } from 'fs';
 import { join } from 'path';
 import { series, parallel } from 'async';
 import * as rimraf from 'rimraf';
@@ -32,23 +32,104 @@ export interface IConfig {
   workspacePath: string;
 }
 
+export interface IPackageJson {
+  types?: string;
+  dependencies?: { [ name: string ]: string };
+}
+
 export interface IRepoInfo {
   name: string;
   path: string;
+  typeDeclarationPath: string;
+  packageJSON: IPackageJson;
+  dependencies: { [ repoName: string ]: IRepoInfo };
 }
 
 let config: IConfig;
-let repoList: IRepoInfo[];
+const reposInfo: { [ repoName: string ]: IRepoInfo } = {};;
 
-export function init(newConfig: IConfig) {
+export function init(newConfig: IConfig, cb: () => void) {
+
+  // Store the config for later use
   config = newConfig;
-  repoList = readdirSync(config.workspacePath)
-    .map((name) => ({ name, path: join(config.workspacePath, name) }))
-    .filter((repo) => repo.name !== 'raspi-tools' && existsSync(join(repo.path, 'package.json')));
+
+  parallel(readdirSync(config.workspacePath).map((name) => (next: () => void) => {
+
+    // First, we exclude this tool from the list
+    if (name === 'raspi-tools') {
+      next();
+      return;
+    }
+
+    // Next, let's create the basic repo info (it may be discarded)
+    const repoInfo: IRepoInfo = {
+      name,
+      path: join(config.workspacePath, name),
+      typeDeclarationPath: '',
+      packageJSON: {},
+      dependencies: {}
+    };
+
+    // Next we check if package.json exists
+    const packageJSONPath = join(repoInfo.path, 'package.json');
+    exists(packageJSONPath, (packageJSONExists) => {
+      if (!packageJSONExists) {
+        next();
+        return;
+      }
+
+      // Now we read in package.json
+      readFile(packageJSONPath, 'utf8', (err, packgeJSONContents) => {
+        if (err) {
+          console.error(err);
+          process.exit(-1);
+        }
+        try {
+          repoInfo.packageJSON = JSON.parse(packgeJSONContents);
+        } catch(e) {
+          console.error(`Could not parse package.json for ${repoInfo.name}: ${e}`);
+          process.exit(-1);
+        }
+
+        // At this point, we know we have a valid repo, so save it
+        reposInfo[repoInfo.name] = repoInfo;
+
+        // Next, check if there are type declarations
+        if (repoInfo.packageJSON.types) {
+          exists(join(repoInfo.path, repoInfo.packageJSON.types), (typeDeclarationsExist) => {
+            if (!typeDeclarationsExist) {
+              console.error(`Type declaration file "${repoInfo.packageJSON.types}" does not exist`);
+              process.exit(-1);
+            }
+            repoInfo.typeDeclarationPath = <string>repoInfo.packageJSON.types;
+            next();
+          });
+        } else {
+          next();
+        }
+      });
+    });
+  }), () => {
+    for (const repoName in reposInfo) {
+      const repoInfo = reposInfo[repoName];
+      if (repoInfo.packageJSON.dependencies) {
+        for (const dep in repoInfo.packageJSON.dependencies) {
+          if (dep in reposInfo) {
+            repoInfo.dependencies[dep] = reposInfo[dep];
+          }
+        }
+      }
+    }
+    cb();
+  });
 }
 
-export function getRepoList(): IRepoInfo[] {
-  return repoList;
+// OH OH OH, new tool that pulls in type declaration files and automatically generates raspi-types package.
+
+// Look into renaming packages in npm
+
+export function getReposInfo(): { [ repoName: string ]: IRepoInfo } {
+  return reposInfo;
 }
 
 function recursiveCopy(sourcePath: string, destinationPath: string, cb: () => void) {

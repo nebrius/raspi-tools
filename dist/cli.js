@@ -45,53 +45,54 @@ if (!fs_1.existsSync(config.workspacePath)) {
     console.error("Error: workspace path \"" + config.workspacePath + "\" does not exist");
     process.exit(-1);
 }
-utils_1.init(config);
-// tslint:disable-next-line:no-unused-expression
-yargs.usage('Usage: raspi-tools <command> [options]')
-    .command({
-    command: 'analyze-deps',
-    aliases: ['d'],
-    describe: 'Analyze the current state of dependencies',
-    builder: function (yargs) {
-        return yargs;
-    },
-    handler: function () {
-        analyze_deps_1.run(config);
-    }
-})
-    .command({
-    command: 'update-types',
-    aliases: ['t'],
-    describe: 'Updates the type definition files for all modules',
-    builder: function (yargs) {
-        return yargs;
-    },
-    handler: function () {
-        update_types_1.run();
-    }
-})
-    .command({
-    command: 'sync',
-    aliases: ['s'],
-    describe: 'Syncs a repo to a raspberry pi',
-    builder: function (yargs) {
-        return yargs
-            .option('repo', {
-            alias: 'r',
-            describe: 'The name of the repo to sync, e.g. "raspi-gpio"'
-        })
-            .option('ip', {
-            alias: 'i',
-            describe: 'The IP address of the Raspberry Pi'
-        })
-            .demandOption(['repo', 'ip']);
-    },
-    handler: function (argv) {
-        sync_1.run(config, argv.repo, argv.ip);
-    }
-})
-    .demandCommand(1, 'You must specify a command with this tool')
-    .help('h')
-    .alias('h', 'help')
-    .argv;
+utils_1.init(config, function () {
+    // tslint:disable-next-line:no-unused-expression
+    yargs.usage('Usage: raspi-tools <command> [options]')
+        .command({
+        command: 'analyze-deps',
+        aliases: ['d'],
+        describe: 'Analyze the current state of dependencies',
+        builder: function (yargs) {
+            return yargs;
+        },
+        handler: function () {
+            analyze_deps_1.run(config);
+        }
+    })
+        .command({
+        command: 'update-types',
+        aliases: ['t'],
+        describe: 'Updates the type definition files for all modules',
+        builder: function (yargs) {
+            return yargs;
+        },
+        handler: function () {
+            update_types_1.run();
+        }
+    })
+        .command({
+        command: 'sync',
+        aliases: ['s'],
+        describe: 'Syncs a repo to a raspberry pi',
+        builder: function (yargs) {
+            return yargs
+                .option('repo', {
+                alias: 'r',
+                describe: 'The name of the repo to sync, e.g. "raspi-gpio"'
+            })
+                .option('ip', {
+                alias: 'i',
+                describe: 'The IP address of the Raspberry Pi'
+            })
+                .demandOption(['repo', 'ip']);
+        },
+        handler: function (argv) {
+            sync_1.run(config, argv.repo, argv.ip);
+        }
+    })
+        .demandCommand(1, 'You must specify a command with this tool')
+        .help('h')
+        .alias('h', 'help')
+        .argv;
+});
 //# sourceMappingURL=cli.js.map

@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import { getRepoList, IConfig } from '../utils';
+import { getReposInfo, IConfig } from '../utils';
 import { join } from 'path';
 import { satisfies } from 'semver';
 import { execSync } from 'child_process';
@@ -43,11 +43,12 @@ interface IDependencyMapEntry {
 
 export function run(config: IConfig) {
 
-  const repos = getRepoList();
+  const repos = getReposInfo();
 
   const dependencyMap: { [ dependency: string ]: IDependencyMapEntry } = {};
 
-  for (const repo of repos) {
+  for (const repoName in repos) {
+    const repo = repos[repoName];
     // tslint:disable-next-line:no-require-imports
     const packagejson = require(join(repo.path, 'package.json'));
     dependencyMap[repo.name] = {
@@ -58,7 +59,8 @@ export function run(config: IConfig) {
     };
   }
 
-  for (const repo of repos) {
+  for (const repoName in repos) {
+    const repo = repos[repoName];
     // tslint:disable-next-line:no-require-imports
     const packagejson = require(join(repo.path, 'package.json'));
     const libraryDef = dependencyMap[repo.name];

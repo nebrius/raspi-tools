@@ -47,10 +47,9 @@ if (!existsSync(config.workspacePath)) {
   process.exit(-1);
 }
 
-init(config);
-
-// tslint:disable-next-line:no-unused-expression
-yargs.usage('Usage: raspi-tools <command> [options]')
+init(config, () => {
+  // tslint:disable-next-line:no-unused-expression
+  yargs.usage('Usage: raspi-tools <command> [options]')
     .command({
       command: 'analyze-deps',
       aliases: [ 'd' ],
@@ -97,3 +96,4 @@ yargs.usage('Usage: raspi-tools <command> [options]')
     .help('h')
     .alias('h', 'help')
     .argv;
+});

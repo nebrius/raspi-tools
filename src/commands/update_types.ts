@@ -22,59 +22,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import { getRepoList, copyDir, IRepoInfo } from '../utils';
-import { readFile } from 'fs';
+import { getReposInfo, copyDir, IRepoInfo } from '../utils';
 import { join } from 'path';
-import { map, parallel } from 'async';
+import { parallel } from 'async';
 
-interface ITypeInfo {
-  repo: IRepoInfo;
-  packageJSON: {
-    dependencies: { [ dependency: string ]: string }
-  };
-  typePath: string;
-}
-
-interface IAsyncNext {
-  (err: string | null, value: ITypeInfo | null): void;
-}
-
-function getTypeInfo(cb: (types: ITypeInfo[]) => void) {
-  map(getRepoList(), (repo: IRepoInfo, next: IAsyncNext) => {
-    readFile(join(repo.path, 'package.json'), 'utf8', (err, contents) => {
-        if (err) {
-          console.error(err);
-          process.exit(-1);
-        }
-        const packageJSON = JSON.parse(contents);
-        const typeInfo: ITypeInfo = {
-          repo,
-          packageJSON,
-          typePath: ''
-        };
-        if (packageJSON.types) {
-          typeInfo.typePath = join(repo.path, packageJSON.types);
-        }
-        next(null, typeInfo);
-      });
-  }, (err: string | null, results: ITypeInfo[]) => {
-    if (err) {
-      console.error(err);
-      process.exit(-1);
-    }
-    cb(results);
-  });
-}
-
-function updateTypes(types: ITypeInfo[]) {
+function updateTypes(reposInfo: { [ repoName: string ]: IRepoInfo }) {
   const tasks: AsyncFunction<undefined, undefined>[] = [];
-  for (const type of types) {
-    for (const dep in type.packageJSON.dependencies) {
-      for (const possibleType of types) {
-        if (possibleType.repo.name === dep && possibleType.typePath) {
-          console.log(`Syncing ${dep} to ${type.repo.name}`);
+  for (const repoName in reposInfo) {
+    const repoInfo = reposInfo[repoName];
+    if (repoInfo.packageJSON.dependencies) {
+      for (const dep in repoInfo.packageJSON.dependencies) {
+        const depInfo = reposInfo[dep];
+        if (depInfo && depInfo.typeDeclarationPath) {
+          console.log(`Syncing ${dep} to ${repoName}`);
           tasks.push((next) => {
-            copyDir(possibleType.repo.path, join(type.repo.path, 'node_modules', dep), next);
+            copyDir(depInfo.path, join(repoInfo.path, 'node_modules', dep), next);
           });
         }
       }
@@ -86,5 +48,6 @@ function updateTypes(types: ITypeInfo[]) {
 }
 
 export function run() {
-  getTypeInfo(updateTypes);
+  const reposInfo = getReposInfo();
+  updateTypes(reposInfo);
 }
