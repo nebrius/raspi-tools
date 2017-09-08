@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2017 Bryan Hughes
+Copyright (c) 2017 Bryan Hughes <bryan@nebri.us>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,8 +25,10 @@ SOFTWARE.
 import * as yargs from 'yargs';
 import { run as runAnalyzeDeps } from './commands/analyze_deps';
 import { run as runUpdateTypes } from './commands/update_types';
+import { run as runInstallDevDeps } from './commands/install_dev_deps';
 import { run as runSync } from './commands/sync';
-import { init, IConfig } from './utils'
+import { run as runPublish } from './commands/publish';
+import { init, getRepoNameForCWD, IConfig } from './utils'
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import * as homeDir from 'user-home';
@@ -73,23 +75,65 @@ init(config, () => {
       }
     })
     .command({
+      command: 'install-dev-deps',
+      aliases: [ 'i' ],
+      describe: 'Installs developer dependencies necessary to build Raspi IO on a non-Raspberry Pi',
+      builder(yargs) {
+        return yargs;
+      },
+      handler() {
+        runInstallDevDeps();
+      }
+    })
+    .command({
       command: 'sync',
       aliases: [ 's' ],
       describe: 'Syncs a repo to a raspberry pi',
       builder(yargs) {
+        const defaultRepo = getRepoNameForCWD();
+        let repoDefaultDescription: string | undefined;
+        if (defaultRepo) {
+          repoDefaultDescription = `cwd=${defaultRepo}`;
+        }
         return yargs
           .option('repo', {
             alias: 'r',
-            describe: 'The name of the repo to sync, e.g. "raspi-gpio"'
+            describe: 'The name of the repo to sync, e.g. "raspi-gpio"',
+            default: defaultRepo,
+            defaultDescription: repoDefaultDescription
           })
           .option('ip', {
             alias: 'i',
-            describe: 'The IP address of the Raspberry Pi'
-          })
-          .demandOption([ 'repo', 'ip' ]);
+            describe: 'The IP address of the Raspberry Pi',
+            default: '192.168.3.2',
+            defaultDescription: '192.168.3.2'
+          });
       },
       handler(argv) {
         runSync(config, argv.repo, argv.ip);
+      }
+    })
+    .command({
+      command: 'publish',
+      aliases: [ 'p' ],
+      describe: 'Publishes, syncs, and tags a new version of the specified repo',
+      builder(yargs) {
+        const defaultRepo = getRepoNameForCWD();
+        let repoDefaultDescription: string | undefined;
+        if (defaultRepo) {
+          repoDefaultDescription = `cwd=${defaultRepo}`;
+        }
+        return yargs
+          .option('repo', {
+            alias: 'r',
+            describe: 'The name of the repo to sync, e.g. "raspi-gpio"',
+            default: defaultRepo,
+            defaultDescription: repoDefaultDescription
+          })
+          .demandOption([ 'repo' ]);
+      },
+      handler(argv) {
+        runPublish(config, argv.repo);
       }
     })
     .demandCommand(1, 'You must specify a command with this tool')

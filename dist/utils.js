@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2017 Bryan Hughes
+Copyright (c) 2017 Bryan Hughes <bryan@nebri.us>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,40 +23,40 @@ SOFTWARE.
 */
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var fs_1 = require("fs");
-var path_1 = require("path");
-var async_1 = require("async");
-var rimraf = require("rimraf");
-var mkdirp = require("mkdirp");
-var config;
-var reposInfo = {};
+const fs_1 = require("fs");
+const path_1 = require("path");
+const async_1 = require("async");
+const rimraf = require("rimraf");
+const mkdirp = require("mkdirp");
+let config;
+const reposInfo = {};
 ;
 function init(newConfig, cb) {
     // Store the config for later use
     config = newConfig;
-    async_1.parallel(fs_1.readdirSync(config.workspacePath).map(function (name) { return function (next) {
+    async_1.parallel(fs_1.readdirSync(config.workspacePath).map((name) => (next) => {
         // First, we exclude this tool from the list
         if (name === 'raspi-tools') {
             next();
             return;
         }
         // Next, let's create the basic repo info (it may be discarded)
-        var repoInfo = {
-            name: name,
+        const repoInfo = {
+            name,
             path: path_1.join(config.workspacePath, name),
             typeDeclarationPath: '',
-            packageJSON: {},
+            packageJSON: { version: '' },
             dependencies: {}
         };
         // Next we check if package.json exists
-        var packageJSONPath = path_1.join(repoInfo.path, 'package.json');
-        fs_1.exists(packageJSONPath, function (packageJSONExists) {
+        const packageJSONPath = path_1.join(repoInfo.path, 'package.json');
+        fs_1.exists(packageJSONPath, (packageJSONExists) => {
             if (!packageJSONExists) {
                 next();
                 return;
             }
             // Now we read in package.json
-            fs_1.readFile(packageJSONPath, 'utf8', function (err, packgeJSONContents) {
+            fs_1.readFile(packageJSONPath, 'utf8', (err, packgeJSONContents) => {
                 if (err) {
                     console.error(err);
                     process.exit(-1);
@@ -65,16 +65,16 @@ function init(newConfig, cb) {
                     repoInfo.packageJSON = JSON.parse(packgeJSONContents);
                 }
                 catch (e) {
-                    console.error("Could not parse package.json for " + repoInfo.name + ": " + e);
+                    console.error(`Could not parse package.json for ${repoInfo.name}: ${e}`);
                     process.exit(-1);
                 }
                 // At this point, we know we have a valid repo, so save it
                 reposInfo[repoInfo.name] = repoInfo;
                 // Next, check if there are type declarations
                 if (repoInfo.packageJSON.types) {
-                    fs_1.exists(path_1.join(repoInfo.path, repoInfo.packageJSON.types), function (typeDeclarationsExist) {
+                    fs_1.exists(path_1.join(repoInfo.path, repoInfo.packageJSON.types), (typeDeclarationsExist) => {
                         if (!typeDeclarationsExist) {
-                            console.error("Type declaration file \"" + repoInfo.packageJSON.types + "\" does not exist");
+                            console.error(`Type declaration file "${repoInfo.packageJSON.types}" does not exist`);
                             process.exit(-1);
                         }
                         repoInfo.typeDeclarationPath = repoInfo.packageJSON.types;
@@ -86,11 +86,11 @@ function init(newConfig, cb) {
                 }
             });
         });
-    }; }), function () {
-        for (var repoName in reposInfo) {
-            var repoInfo = reposInfo[repoName];
+    }), () => {
+        for (const repoName in reposInfo) {
+            const repoInfo = reposInfo[repoName];
             if (repoInfo.packageJSON.dependencies) {
-                for (var dep in repoInfo.packageJSON.dependencies) {
+                for (const dep in repoInfo.packageJSON.dependencies) {
                     if (dep in reposInfo) {
                         repoInfo.dependencies[dep] = reposInfo[dep];
                     }
@@ -108,15 +108,15 @@ function getReposInfo() {
 }
 exports.getReposInfo = getReposInfo;
 function recursiveCopy(sourcePath, destinationPath, cb) {
-    fs_1.readdir(sourcePath, function (err, files) {
+    fs_1.readdir(sourcePath, (err, files) => {
         if (err) {
             console.error(err);
             process.exit(-1);
         }
-        var filteredFiles = files.filter(function (file) { return ['node_modules', '.git', '.vscode'].indexOf(file) === -1; });
-        async_1.parallel(filteredFiles.map(function (file) { return function (next) {
-            var filePath = path_1.join(sourcePath, file);
-            fs_1.stat(filePath, function (statErr, stats) {
+        const filteredFiles = files.filter((file) => ['node_modules', '.git', '.vscode'].indexOf(file) === -1);
+        async_1.parallel(filteredFiles.map((file) => (next) => {
+            const filePath = path_1.join(sourcePath, file);
+            fs_1.stat(filePath, (statErr, stats) => {
                 if (statErr) {
                     console.error(statErr);
                     process.exit(-1);
@@ -125,7 +125,7 @@ function recursiveCopy(sourcePath, destinationPath, cb) {
                     recursiveCopy(filePath, path_1.join(destinationPath, file), next);
                 }
                 else {
-                    fs_1.exists(destinationPath, function (exists) {
+                    fs_1.exists(destinationPath, (exists) => {
                         function execute() {
                             fs_1.createReadStream(filePath).pipe(fs_1.createWriteStream(path_1.join(destinationPath, file))).on('finish', next);
                         }
@@ -138,13 +138,13 @@ function recursiveCopy(sourcePath, destinationPath, cb) {
                     });
                 }
             });
-        }; }), cb);
+        }), cb);
     });
 }
 function copyDir(sourcePath, destinationPath, cb) {
     async_1.series([
-        function (next) {
-            fs_1.exists(destinationPath, function (exists) {
+        (next) => {
+            fs_1.exists(destinationPath, (exists) => {
                 if (!exists) {
                     next();
                     return;
@@ -152,10 +152,26 @@ function copyDir(sourcePath, destinationPath, cb) {
                 rimraf(destinationPath, next);
             });
         },
-        function (next) {
+        (next) => {
             recursiveCopy(sourcePath, destinationPath, next);
         }
     ], cb);
 }
 exports.copyDir = copyDir;
+function getRepoNameForCWD() {
+    const repoNames = Object.keys(getReposInfo());
+    const dirName = path_1.basename(process.cwd());
+    if (repoNames.indexOf(dirName) !== -1) {
+        return dirName;
+    }
+    return undefined;
+}
+exports.getRepoNameForCWD = getRepoNameForCWD;
+function pad(str, length) {
+    while (str.length < length) {
+        str += ' ';
+    }
+    return str;
+}
+exports.pad = pad;
 //# sourceMappingURL=utils.js.map

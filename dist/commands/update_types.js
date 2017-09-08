@@ -23,37 +23,31 @@ SOFTWARE.
 */
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var utils_1 = require("../utils");
-var path_1 = require("path");
-var async_1 = require("async");
+const utils_1 = require("../utils");
+const path_1 = require("path");
+const async_1 = require("async");
 function updateTypes(reposInfo) {
-    var tasks = [];
-    var _loop_1 = function (repoName) {
-        var repoInfo = reposInfo[repoName];
+    const tasks = [];
+    for (const repoName in reposInfo) {
+        const repoInfo = reposInfo[repoName];
         if (repoInfo.packageJSON.dependencies) {
-            var _loop_2 = function (dep) {
-                var depInfo = reposInfo[dep];
+            for (const dep in repoInfo.packageJSON.dependencies) {
+                const depInfo = reposInfo[dep];
                 if (depInfo && depInfo.typeDeclarationPath) {
-                    console.log("Syncing " + dep + " to " + repoName);
-                    tasks.push(function (next) {
+                    console.log(`Syncing ${dep} to ${repoName}`);
+                    tasks.push((next) => {
                         utils_1.copyDir(depInfo.path, path_1.join(repoInfo.path, 'node_modules', dep), next);
                     });
                 }
-            };
-            for (var dep in repoInfo.packageJSON.dependencies) {
-                _loop_2(dep);
             }
         }
-    };
-    for (var repoName in reposInfo) {
-        _loop_1(repoName);
     }
-    async_1.parallel(tasks, function () {
+    async_1.parallel(tasks, () => {
         console.log('Done');
     });
 }
 function run() {
-    var reposInfo = utils_1.getReposInfo();
+    const reposInfo = utils_1.getReposInfo();
     updateTypes(reposInfo);
 }
 exports.run = run;

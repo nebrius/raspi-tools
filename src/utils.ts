@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2017 Bryan Hughes
+Copyright (c) 2017 Bryan Hughes <bryan@nebri.us>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 import { readdirSync, exists, readdir, readFile, stat, createReadStream, createWriteStream } from 'fs';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { series, parallel } from 'async';
 import * as rimraf from 'rimraf';
 import * as mkdirp from 'mkdirp';
@@ -35,6 +35,8 @@ export interface IConfig {
 export interface IPackageJson {
   types?: string;
   dependencies?: { [ name: string ]: string };
+  devDependencies?: { [ name: string ]: string };
+  version: string;
 }
 
 export interface IRepoInfo {
@@ -66,7 +68,7 @@ export function init(newConfig: IConfig, cb: () => void) {
       name,
       path: join(config.workspacePath, name),
       typeDeclarationPath: '',
-      packageJSON: {},
+      packageJSON: { version: '' },
       dependencies: {}
     };
 
@@ -180,4 +182,20 @@ export function copyDir(sourcePath: string, destinationPath: string, cb: () => v
       recursiveCopy(sourcePath, destinationPath, next);
     }
   ], cb);
+}
+
+export function getRepoNameForCWD(): string | undefined {
+  const repoNames = Object.keys(getReposInfo());
+  const dirName = basename(process.cwd());
+  if (repoNames.indexOf(dirName) !== -1) {
+    return dirName;
+  }
+  return undefined;
+}
+
+export function pad(str: string, length: number): string {
+  while (str.length < length) {
+    str += ' ';
+  }
+  return str;
 }

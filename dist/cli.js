@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2017 Bryan Hughes
+Copyright (c) 2017 Bryan Hughes <bryan@nebri.us>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,39 +23,41 @@ SOFTWARE.
 */
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var yargs = require("yargs");
-var analyze_deps_1 = require("./commands/analyze_deps");
-var update_types_1 = require("./commands/update_types");
-var sync_1 = require("./commands/sync");
-var utils_1 = require("./utils");
-var fs_1 = require("fs");
-var path_1 = require("path");
-var homeDir = require("user-home");
-var CONFIG_FILE_PATH = path_1.join(homeDir, '.raspi-tools.rc');
+const yargs = require("yargs");
+const analyze_deps_1 = require("./commands/analyze_deps");
+const update_types_1 = require("./commands/update_types");
+const install_dev_deps_1 = require("./commands/install_dev_deps");
+const sync_1 = require("./commands/sync");
+const publish_1 = require("./commands/publish");
+const utils_1 = require("./utils");
+const fs_1 = require("fs");
+const path_1 = require("path");
+const homeDir = require("user-home");
+const CONFIG_FILE_PATH = path_1.join(homeDir, '.raspi-tools.rc');
 if (!fs_1.existsSync(CONFIG_FILE_PATH)) {
-    console.error("Error: config file \"" + CONFIG_FILE_PATH + "\" is missing");
+    console.error(`Error: config file "${CONFIG_FILE_PATH}" is missing`);
     process.exit(-1);
 }
-var config = JSON.parse(fs_1.readFileSync(CONFIG_FILE_PATH, 'utf8'));
+const config = JSON.parse(fs_1.readFileSync(CONFIG_FILE_PATH, 'utf8'));
 if (!config.workspacePath) {
-    console.error("Error: missing config entry \"workspacePath\"");
+    console.error(`Error: missing config entry "workspacePath"`);
     process.exit(-1);
 }
 if (!fs_1.existsSync(config.workspacePath)) {
-    console.error("Error: workspace path \"" + config.workspacePath + "\" does not exist");
+    console.error(`Error: workspace path "${config.workspacePath}" does not exist`);
     process.exit(-1);
 }
-utils_1.init(config, function () {
+utils_1.init(config, () => {
     // tslint:disable-next-line:no-unused-expression
     yargs.usage('Usage: raspi-tools <command> [options]')
         .command({
         command: 'analyze-deps',
         aliases: ['d'],
         describe: 'Analyze the current state of dependencies',
-        builder: function (yargs) {
+        builder(yargs) {
             return yargs;
         },
-        handler: function () {
+        handler() {
             analyze_deps_1.run(config);
         }
     })
@@ -63,31 +65,73 @@ utils_1.init(config, function () {
         command: 'update-types',
         aliases: ['t'],
         describe: 'Updates the type definition files for all modules',
-        builder: function (yargs) {
+        builder(yargs) {
             return yargs;
         },
-        handler: function () {
+        handler() {
             update_types_1.run();
+        }
+    })
+        .command({
+        command: 'install-dev-deps',
+        aliases: ['i'],
+        describe: 'Installs developer dependencies necessary to build Raspi IO on a non-Raspberry Pi',
+        builder(yargs) {
+            return yargs;
+        },
+        handler() {
+            install_dev_deps_1.run();
         }
     })
         .command({
         command: 'sync',
         aliases: ['s'],
         describe: 'Syncs a repo to a raspberry pi',
-        builder: function (yargs) {
+        builder(yargs) {
+            const defaultRepo = utils_1.getRepoNameForCWD();
+            let repoDefaultDescription;
+            if (defaultRepo) {
+                repoDefaultDescription = `cwd=${defaultRepo}`;
+            }
             return yargs
                 .option('repo', {
                 alias: 'r',
-                describe: 'The name of the repo to sync, e.g. "raspi-gpio"'
+                describe: 'The name of the repo to sync, e.g. "raspi-gpio"',
+                default: defaultRepo,
+                defaultDescription: repoDefaultDescription
             })
                 .option('ip', {
                 alias: 'i',
-                describe: 'The IP address of the Raspberry Pi'
-            })
-                .demandOption(['repo', 'ip']);
+                describe: 'The IP address of the Raspberry Pi',
+                default: '192.168.3.2',
+                defaultDescription: '192.168.3.2'
+            });
         },
-        handler: function (argv) {
+        handler(argv) {
             sync_1.run(config, argv.repo, argv.ip);
+        }
+    })
+        .command({
+        command: 'publish',
+        aliases: ['p'],
+        describe: 'Publishes, syncs, and tags a new version of the specified repo',
+        builder(yargs) {
+            const defaultRepo = utils_1.getRepoNameForCWD();
+            let repoDefaultDescription;
+            if (defaultRepo) {
+                repoDefaultDescription = `cwd=${defaultRepo}`;
+            }
+            return yargs
+                .option('repo', {
+                alias: 'r',
+                describe: 'The name of the repo to sync, e.g. "raspi-gpio"',
+                default: defaultRepo,
+                defaultDescription: repoDefaultDescription
+            })
+                .demandOption(['repo']);
+        },
+        handler(argv) {
+            publish_1.run(config, argv.repo);
         }
     })
         .demandCommand(1, 'You must specify a command with this tool')

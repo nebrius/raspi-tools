@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2017 Bryan Hughes
+Copyright (c) 2017 Bryan Hughes <bryan@nebri.us>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,18 +23,18 @@ SOFTWARE.
 */
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var utils_1 = require("../utils");
-var path_1 = require("path");
-var semver_1 = require("semver");
-var child_process_1 = require("child_process");
-var chalk_1 = require("chalk");
+const utils_1 = require("../utils");
+const path_1 = require("path");
+const semver_1 = require("semver");
+const child_process_1 = require("child_process");
+const chalk_1 = require("chalk");
 function run(config) {
-    var repos = utils_1.getReposInfo();
-    var dependencyMap = {};
-    for (var repoName in repos) {
-        var repo = repos[repoName];
+    const repos = utils_1.getReposInfo();
+    const dependencyMap = {};
+    for (const repoName in repos) {
+        const repo = repos[repoName];
         // tslint:disable-next-line:no-require-imports
-        var packagejson = require(path_1.join(repo.path, 'package.json'));
+        const packagejson = require(path_1.join(repo.path, 'package.json'));
         dependencyMap[repo.name] = {
             version: packagejson.version,
             dependencies: {},
@@ -42,12 +42,12 @@ function run(config) {
             unpublishedChanges: false
         };
     }
-    for (var repoName in repos) {
-        var repo = repos[repoName];
+    for (const repoName in repos) {
+        const repo = repos[repoName];
         // tslint:disable-next-line:no-require-imports
-        var packagejson = require(path_1.join(repo.path, 'package.json'));
-        var libraryDef = dependencyMap[repo.name];
-        for (var dep in packagejson.dependencies) {
+        const packagejson = require(path_1.join(repo.path, 'package.json'));
+        const libraryDef = dependencyMap[repo.name];
+        for (const dep in packagejson.dependencies) {
             if (dependencyMap[dep]) {
                 libraryDef.dependencies[dep] = {
                     version: packagejson.dependencies[dep],
@@ -57,37 +57,37 @@ function run(config) {
             }
         }
     }
-    for (var library in dependencyMap) {
-        var libraryDef = dependencyMap[library];
+    for (const library in dependencyMap) {
+        const libraryDef = dependencyMap[library];
         libraryDef.uncommittedChanges = child_process_1.execSync('git status', {
             cwd: path_1.join(config.workspacePath, library)
         }).toString().indexOf('nothing to commit') === -1;
         libraryDef.unpublishedChanges = child_process_1.execSync('git tag -l --sort=-refname', {
             cwd: path_1.join(config.workspacePath, library)
         }).toString().split('\n')[0] !== libraryDef.version;
-        var statusHeader = library + ': ' + dependencyMap[library].version +
+        let statusHeader = library + ': ' + dependencyMap[library].version +
             (libraryDef.uncommittedChanges ? ', uncommitted changes ' : '') +
             (libraryDef.unpublishedChanges ? ', unpublished changes' : '');
         if (libraryDef.uncommittedChanges || libraryDef.unpublishedChanges) {
             statusHeader = chalk_1.red(statusHeader);
         }
         console.log(statusHeader);
-        for (var dep in libraryDef.dependencies) {
+        for (const dep in libraryDef.dependencies) {
             libraryDef.dependencies[dep].currentVersion = dependencyMap[dep].version;
             libraryDef.dependencies[dep].upToDate = semver_1.satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
-            var status_1 = void 0;
+            let status;
             if (libraryDef.dependencies[dep].upToDate) {
-                status_1 = '  ' + dep + '';
+                status = '  ' + dep + '';
             }
             else {
-                status_1 = '  ' + dep;
-                for (var i = status_1.length; i < 20; i++) {
-                    status_1 += ' ';
+                status = '  ' + dep;
+                for (let i = status.length; i < 20; i++) {
+                    status += ' ';
                 }
-                status_1 += 'current: ' + libraryDef.dependencies[dep].currentVersion + '   package: ' + libraryDef.dependencies[dep].version;
-                status_1 = chalk_1.red(status_1);
+                status += 'current: ' + libraryDef.dependencies[dep].currentVersion + '   package: ' + libraryDef.dependencies[dep].version;
+                status = chalk_1.red(status);
             }
-            console.log(status_1);
+            console.log(status);
         }
         console.log('');
     }
