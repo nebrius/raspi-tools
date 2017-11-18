@@ -22,47 +22,90 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import { IConfig, getReposInfo } from '../utils';
+import { IConfig, getReposInfo, log, warn, error, checkForUncommittedChanges } from '../utils';
 import { spawn } from 'child_process';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { series } from 'async';
+import { generateTypeDefinition } from './generate_types';
 
 export function run(config: IConfig, repo: string) {
   const repoPath = join(config.workspacePath, repo);
   const reposInfo = getReposInfo();
   const version = reposInfo[repo].packageJSON.version;
 
-  console.log(`Publishing v${version} of ${repo}\n`);
+  log(`Publishing v${version} of ${repo}\n`);
   series([
     (next) => {
-      console.log('Pushing master to git\n');
+      checkForUncommittedChanges(reposInfo[repo].path, (err, hasChanges) => {
+        if (err) {
+          next(err);
+          return;
+        }
+        if (hasChanges) {
+          warn(`Uncommitted changes detected, skipping`);
+          next(`Uncommitted changes detected, skipping`);
+          return;
+        }
+        next();
+      });
+    },
+    (next) => {
+      log('Pushing master to git\n');
       spawn('git', [ 'push', 'origin', 'master' ], {
         stdio: 'inherit',
         cwd: repoPath
       }).on('close', next);
     },
     (next) => {
-      console.log('\nPublishing to npm\n');
+      log('\nPublishing to npm\n');
       spawn('npm', [ 'publish' ], {
         stdio: 'inherit',
         cwd: repoPath
       }).on('close', next);
     },
     (next) => {
-      console.log('\nTagging release\n');
+      log('\nTagging release\n');
       spawn('git', [ 'tag', '-a', version, '-m', `Published v${version} to npm` ], {
         stdio: 'inherit',
         cwd: repoPath
       }).on('close', next);
     },
     (next) => {
-      console.log('Pushing tags to git\n');
+      log('Pushing tags to git\n');
       spawn('git', [ 'push', 'origin', '--tags' ], {
         stdio: 'inherit',
         cwd: repoPath
       }).on('close', next);
+    },
+    (next) => {
+      log('\nGenerating DefinitelyTyped definition file\n');
+      generateTypeDefinition(reposInfo[repo], config, (getTypeDefinitionErr, definitionFilePath) => {
+        if (getTypeDefinitionErr) {
+          error(getTypeDefinitionErr);
+          next(getTypeDefinitionErr);
+          return;
+        }
+        if (typeof definitionFilePath !== 'string') {
+          error(`Internal Error: 'generateTypeDefinition' returned (undefined, undefined)`);
+          return;
+        }
+
+        log('\nChecking if the DefinitelyTyped definition needs updating\n');
+        checkForUncommittedChanges(dirname(definitionFilePath), (uncommittedChangesErr, hasChanges) => {
+          if (uncommittedChangesErr) {
+            error(uncommittedChangesErr);
+            next(uncommittedChangesErr);
+            return;
+          }
+          if (hasChanges) {
+            warn(`The DefinitelyTyped definition changed!`);
+          }
+        });
+      });
     }
-  ], () => {
-    console.log('Finished');
+  ], (err) => {
+    if (!err) {
+      log('Finished');
+    }
   });
 }

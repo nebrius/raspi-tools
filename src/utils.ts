@@ -24,12 +24,15 @@ SOFTWARE.
 
 import { readdirSync, exists, readdir, readFile, stat, createReadStream, createWriteStream } from 'fs';
 import { join, basename } from 'path';
+import { exec } from 'child_process';
 import { series, parallel } from 'async';
 import * as rimraf from 'rimraf';
 import * as mkdirp from 'mkdirp';
+import { yellow, red } from 'chalk';
 
 export interface IConfig {
   workspacePath: string;
+  definitelyTypedPath: string;
 }
 
 export interface IPackageJson {
@@ -48,7 +51,23 @@ export interface IRepoInfo {
 }
 
 let config: IConfig;
-const reposInfo: { [ repoName: string ]: IRepoInfo } = {};;
+const reposInfo: { [ repoName: string ]: IRepoInfo } = {};
+
+export function log(message: string): void {
+  console.log(message);
+}
+
+export function warn(message: string): void {
+  console.warn(yellow(`WARNING: ${message}`));
+}
+
+export function error(message: string | Error): void {
+  if (typeof message === 'string') {
+    console.error(red(`ERROR: ${message}`));
+  } else {
+    console.error(red(message.toString()));
+  }
+}
 
 export function init(newConfig: IConfig, cb: () => void) {
 
@@ -83,13 +102,13 @@ export function init(newConfig: IConfig, cb: () => void) {
       // Now we read in package.json
       readFile(packageJSONPath, 'utf8', (err, packgeJSONContents) => {
         if (err) {
-          console.error(err);
+          error(err);
           process.exit(-1);
         }
         try {
           repoInfo.packageJSON = JSON.parse(packgeJSONContents);
         } catch(e) {
-          console.error(`Could not parse package.json for ${repoInfo.name}: ${e}`);
+          error(`Could not parse package.json for ${repoInfo.name}: ${e}`);
           process.exit(-1);
         }
 
@@ -100,7 +119,7 @@ export function init(newConfig: IConfig, cb: () => void) {
         if (repoInfo.packageJSON.types) {
           exists(join(repoInfo.path, repoInfo.packageJSON.types), (typeDeclarationsExist) => {
             if (!typeDeclarationsExist) {
-              console.error(`Type declaration file "${repoInfo.packageJSON.types}" does not exist`);
+              error(`Type declaration file "${repoInfo.packageJSON.types}" does not exist`);
               process.exit(-1);
             }
             repoInfo.typeDeclarationPath = <string>repoInfo.packageJSON.types;
@@ -126,9 +145,33 @@ export function init(newConfig: IConfig, cb: () => void) {
   });
 }
 
-// OH OH OH, new tool that pulls in type declaration files and automatically generates raspi-types package.
+export function checkForUnpublishedChanges(
+  repoInfo: IRepoInfo,
+  cb: (err: Error | undefined, hasChanges: boolean | undefined) => void
+): void {
+  exec('git tag -l --sort=-refname', {
+    cwd: repoInfo.path
+  }, (err, stdout, stderr) => {
+    if (err || stderr) {
+      cb(err || new Error(stderr), undefined);
+      return;
+    }
+    cb(undefined, stdout.toString().split('\n')[0] !== repoInfo.packageJSON.version);
+  });
+}
 
-// Look into renaming packages in npm
+export function checkForUncommittedChanges(
+  repoPath: string,
+  cb: (err: Error | undefined, hasChanges: boolean | undefined) => void
+): void {
+  exec('git status', { cwd: repoPath }, (err, stdout, stderr) => {
+    if (err || stderr) {
+      cb(err || new Error(stderr), undefined);
+      return;
+    }
+    cb(undefined, stdout.toString().indexOf('nothing to commit') === -1);
+  });
+}
 
 export function getReposInfo(): { [ repoName: string ]: IRepoInfo } {
   return reposInfo;
@@ -137,7 +180,7 @@ export function getReposInfo(): { [ repoName: string ]: IRepoInfo } {
 function recursiveCopy(sourcePath: string, destinationPath: string, cb: () => void) {
   readdir(sourcePath, (err, files) => {
     if (err) {
-      console.error(err);
+      error(err);
       process.exit(-1);
     }
     const filteredFiles = files.filter((file) => [ 'node_modules', '.git', '.vscode' ].indexOf(file) === -1);
@@ -145,7 +188,7 @@ function recursiveCopy(sourcePath: string, destinationPath: string, cb: () => vo
       const filePath = join(sourcePath, file);
       stat(filePath, (statErr, stats) => {
         if (statErr) {
-          console.error(statErr);
+          error(statErr);
           process.exit(-1);
         }
         if (stats.isDirectory()) {

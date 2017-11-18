@@ -22,11 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import { getReposInfo, IConfig } from '../utils';
+import { getReposInfo, IRepoInfo, log, checkForUnpublishedChanges, checkForUncommittedChanges } from '../utils';
 import { join } from 'path';
 import { satisfies } from 'semver';
-import { execSync } from 'child_process';
 import { red } from 'chalk';
+import { series, parallel, AsyncFunction } from 'async';
 
 interface IDependencyEntry {
   version: string;
@@ -37,25 +37,22 @@ interface IDependencyEntry {
 interface IDependencyMapEntry {
   version: string;
   dependencies: { [ dependency: string ]: IDependencyEntry };
-  uncommittedChanges: boolean;
-  unpublishedChanges: boolean;
+  repoInfo: IRepoInfo;
 }
 
-export function run(config: IConfig) {
+export function run() {
 
   const repos = getReposInfo();
-
   const dependencyMap: { [ dependency: string ]: IDependencyMapEntry } = {};
 
   for (const repoName in repos) {
-    const repo = repos[repoName];
+    const repoInfo = repos[repoName];
     // tslint:disable-next-line:no-require-imports
-    const packagejson = require(join(repo.path, 'package.json'));
-    dependencyMap[repo.name] = {
+    const packagejson = require(join(repoInfo.path, 'package.json'));
+    dependencyMap[repoInfo.name] = {
       version: packagejson.version,
       dependencies: {},
-      uncommittedChanges: false,
-      unpublishedChanges: false
+      repoInfo
     };
   }
 
@@ -75,41 +72,64 @@ export function run(config: IConfig) {
     }
   }
 
+  const repoTasks: AsyncFunction<undefined, Error | undefined>[] = [];
   for (const library in dependencyMap) {
-    const libraryDef = dependencyMap[library];
+    repoTasks.push((next: (err: Error | undefined, result: undefined) => void) => {
+      const libraryDef = dependencyMap[library];
 
-    libraryDef.uncommittedChanges = execSync('git status', {
-      cwd: join(config.workspacePath, library)
-    }).toString().indexOf('nothing to commit') === -1;
-
-    libraryDef.unpublishedChanges = execSync('git tag -l --sort=-refname', {
-      cwd: join(config.workspacePath, library)
-    }).toString().split('\n')[0] !== libraryDef.version;
-
-    let statusHeader = library + ': ' + dependencyMap[library].version +
-      (libraryDef.uncommittedChanges ? ', uncommitted changes ' : '') +
-      (libraryDef.unpublishedChanges ? ', unpublished changes' : '');
-    if (libraryDef.uncommittedChanges || libraryDef.unpublishedChanges) {
-      statusHeader = red(statusHeader);
-    }
-    console.log(statusHeader);
-
-    for (const dep in libraryDef.dependencies) {
-      libraryDef.dependencies[dep].currentVersion = dependencyMap[dep].version;
-      libraryDef.dependencies[dep].upToDate = satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
-      let status;
-      if (libraryDef.dependencies[dep].upToDate) {
-        status = '  ' + dep + '';
-      } else {
-        status = '  ' + dep;
-        for (let i = status.length; i < 20; i++) {
-          status += ' ';
+      series([
+        (changesNext) => {
+          checkForUnpublishedChanges(libraryDef.repoInfo, (err, hasChanges) => {
+            if (err) {
+              changesNext(err);
+              return;
+            }
+            changesNext(undefined, hasChanges);
+          });
+        },
+        (changesNext) => {
+          checkForUncommittedChanges(libraryDef.repoInfo.path, (err, hasChanges) => {
+            if (err) {
+              changesNext(err);
+              return;
+            }
+            changesNext(undefined, hasChanges);
+          });
         }
-        status += 'current: ' + libraryDef.dependencies[dep].currentVersion + '   package: ' + libraryDef.dependencies[dep].version;
-        status = red(status);
-      }
-      console.log(status);
-    }
-    console.log('');
+      ], (err: Error | undefined, results: boolean[]) => {
+        if (err) {
+          next(err, undefined);
+          return;
+        }
+        const [ hasUnpublishedChanges, hasUncommittedChanges ] = results;
+        let statusHeader = library + ': ' + dependencyMap[library].version +
+          (hasUncommittedChanges ? ', uncommitted changes ' : '') +
+          (hasUnpublishedChanges ? ', unpublished changes' : '');
+        if (hasUncommittedChanges || hasUnpublishedChanges) {
+          statusHeader = red(statusHeader);
+        }
+        log(statusHeader);
+
+        for (const dep in libraryDef.dependencies) {
+          libraryDef.dependencies[dep].currentVersion = dependencyMap[dep].version;
+          libraryDef.dependencies[dep].upToDate = satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
+          let status;
+          if (libraryDef.dependencies[dep].upToDate) {
+            status = '  ' + dep + '';
+          } else {
+            status = '  ' + dep;
+            for (let i = status.length; i < 20; i++) {
+              status += ' ';
+            }
+            status += 'current: ' + libraryDef.dependencies[dep].currentVersion + '   package: ' + libraryDef.dependencies[dep].version;
+            status = red(status);
+          }
+          log(status);
+        }
+        log('');
+        next(undefined, undefined);
+      });
+    });
   }
+  parallel(repoTasks, () => {});
 }

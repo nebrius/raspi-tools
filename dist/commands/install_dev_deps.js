@@ -1,3 +1,4 @@
+"use strict";
 /*
 MIT License
 
@@ -21,18 +22,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const child_process_1 = require("child_process");
 const async_1 = require("async");
 const utils_1 = require("../utils");
 const semver_1 = require("semver");
-const chalk_1 = require("chalk");
 const update_types_1 = require("./update_types");
 function getLatestVersions(cb) {
     const reposInfo = utils_1.getReposInfo();
     // Create the master list of dependencies
-    console.log('Analyzing developer dependencies');
+    utils_1.log('Analyzing developer dependencies');
     const masterDepList = {};
     for (const repoName in reposInfo) {
         const repoInfo = reposInfo[repoName];
@@ -47,12 +46,12 @@ function getLatestVersions(cb) {
     }
     // Fetch the latest version of each dep in the master list
     const tasks = [];
-    console.log('Determining the latest version of all developer dependencies');
+    utils_1.log('Determining the latest version of all developer dependencies');
     for (const depName in masterDepList) {
         tasks.push((next) => {
             child_process_1.exec(`npm info ${depName} version`, (err, stdout, stderr) => {
                 if (err || stderr) {
-                    console.log(err || stderr);
+                    utils_1.error(err || stderr);
                     next(err || stderr);
                     return;
                 }
@@ -80,28 +79,28 @@ function checkDepVersions(latestVersions, cb) {
             if (!semver_1.satisfies(latestVersion, depVersionRange)) {
                 if (!hasPrintedHeader) {
                     hasPrintedHeader = true;
-                    console.log(chalk_1.yellow('\nOut of date developer dependencies detected!'));
+                    utils_1.warn('Out of date developer dependencies detected!');
                 }
                 if (!hasPrintedRepoName) {
                     hasPrintedRepoName = true;
-                    console.log(`\n${repoName}:`);
+                    utils_1.log(`\n${repoName}:`);
                 }
-                console.log(`  ${utils_1.pad(depName, 20)} ${utils_1.pad(depVersionRange, 8)} =/=   ${latestVersion}`);
+                utils_1.log(`  ${utils_1.pad(depName, 20)} ${utils_1.pad(depVersionRange, 8)} =/=   ${latestVersion}`);
             }
         }
     }
     if (hasPrintedHeader) {
-        console.log('');
+        utils_1.log('');
     }
     else {
-        console.log('All developer dependencies up to date');
+        utils_1.log('All developer dependencies up to date');
     }
     setImmediate(cb);
 }
 function installDeps() {
     const reposInfo = utils_1.getReposInfo();
     const tasks = [];
-    console.log('Installing developer dependencies');
+    utils_1.log('Installing developer dependencies');
     for (const repoName in reposInfo) {
         const repoInfo = reposInfo[repoName];
         tasks.push((next) => {
@@ -123,7 +122,10 @@ function installDeps() {
             }).on('close', next);
         });
     }
-    async_1.parallel(tasks, () => update_types_1.run());
+    async_1.parallel(tasks, () => {
+        utils_1.log('\nSyncing raspi types:\n');
+        update_types_1.run();
+    });
 }
 function run() {
     getLatestVersions((deps) => checkDepVersions(deps, () => installDeps()));

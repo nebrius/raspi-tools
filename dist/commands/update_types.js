@@ -1,3 +1,4 @@
+"use strict";
 /*
 MIT License
 
@@ -21,7 +22,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../utils");
 const path_1 = require("path");
@@ -34,7 +34,7 @@ function updateTypes(reposInfo) {
             for (const dep in repoInfo.packageJSON.dependencies) {
                 const depInfo = reposInfo[dep];
                 if (depInfo && depInfo.typeDeclarationPath) {
-                    console.log(`Syncing ${dep} to ${repoName}`);
+                    utils_1.log(`Syncing ${dep} to ${repoName}`);
                     tasks.push((next) => {
                         utils_1.copyDir(depInfo.path, path_1.join(repoInfo.path, 'node_modules', dep), next);
                     });
@@ -43,7 +43,7 @@ function updateTypes(reposInfo) {
         }
     }
     async_1.parallel(tasks, () => {
-        console.log('Done');
+        utils_1.log('Done');
     });
 }
 function run() {

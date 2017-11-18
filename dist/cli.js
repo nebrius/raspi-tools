@@ -1,3 +1,4 @@
+"use strict";
 /*
 MIT License
 
@@ -21,12 +22,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const yargs = require("yargs");
 const analyze_deps_1 = require("./commands/analyze_deps");
-const update_types_1 = require("./commands/update_types");
-const install_dev_deps_1 = require("./commands/install_dev_deps");
+const generate_types_1 = require("./commands/generate_types");
 const sync_1 = require("./commands/sync");
 const publish_1 = require("./commands/publish");
 const utils_1 = require("./utils");
@@ -35,16 +34,20 @@ const path_1 = require("path");
 const homeDir = require("user-home");
 const CONFIG_FILE_PATH = path_1.join(homeDir, '.raspi-tools.rc');
 if (!fs_1.existsSync(CONFIG_FILE_PATH)) {
-    console.error(`Error: config file "${CONFIG_FILE_PATH}" is missing`);
+    utils_1.error(`Config file "${CONFIG_FILE_PATH}" is missing`);
     process.exit(-1);
 }
 const config = JSON.parse(fs_1.readFileSync(CONFIG_FILE_PATH, 'utf8'));
 if (!config.workspacePath) {
-    console.error(`Error: missing config entry "workspacePath"`);
+    utils_1.error(`Missing config entry "workspacePath"`);
     process.exit(-1);
 }
 if (!fs_1.existsSync(config.workspacePath)) {
-    console.error(`Error: workspace path "${config.workspacePath}" does not exist`);
+    utils_1.error(`Workspace path "${config.workspacePath}" does not exist`);
+    process.exit(-1);
+}
+if (!fs_1.existsSync(config.definitelyTypedPath)) {
+    utils_1.error(`DefinitelyTyped path "${config.definitelyTypedPath}" does not exist`);
     process.exit(-1);
 }
 utils_1.init(config, () => {
@@ -58,29 +61,18 @@ utils_1.init(config, () => {
             return yargs;
         },
         handler() {
-            analyze_deps_1.run(config);
+            analyze_deps_1.run();
         }
     })
         .command({
-        command: 'update-types',
-        aliases: ['t'],
-        describe: 'Updates the type definition files for all modules',
+        command: 'generate-types',
+        aliases: ['g'],
+        describe: 'Generates the DefinitelyTyped files for all modules',
         builder(yargs) {
             return yargs;
         },
         handler() {
-            update_types_1.run();
-        }
-    })
-        .command({
-        command: 'install-dev-deps',
-        aliases: ['i'],
-        describe: 'Installs developer dependencies necessary to build Raspi IO on a non-Raspberry Pi',
-        builder(yargs) {
-            return yargs;
-        },
-        handler() {
-            install_dev_deps_1.run();
+            generate_types_1.run(config);
         }
     })
         .command({

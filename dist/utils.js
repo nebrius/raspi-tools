@@ -1,3 +1,4 @@
+"use strict";
 /*
 MIT License
 
@@ -21,16 +22,33 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = require("fs");
 const path_1 = require("path");
+const child_process_1 = require("child_process");
 const async_1 = require("async");
 const rimraf = require("rimraf");
 const mkdirp = require("mkdirp");
+const chalk_1 = require("chalk");
 let config;
 const reposInfo = {};
-;
+function log(message) {
+    console.log(message);
+}
+exports.log = log;
+function warn(message) {
+    console.warn(chalk_1.yellow(`WARNING: ${message}`));
+}
+exports.warn = warn;
+function error(message) {
+    if (typeof message === 'string') {
+        console.error(chalk_1.red(`ERROR: ${message}`));
+    }
+    else {
+        console.error(chalk_1.red(message.toString()));
+    }
+}
+exports.error = error;
 function init(newConfig, cb) {
     // Store the config for later use
     config = newConfig;
@@ -58,14 +76,14 @@ function init(newConfig, cb) {
             // Now we read in package.json
             fs_1.readFile(packageJSONPath, 'utf8', (err, packgeJSONContents) => {
                 if (err) {
-                    console.error(err);
+                    error(err);
                     process.exit(-1);
                 }
                 try {
                     repoInfo.packageJSON = JSON.parse(packgeJSONContents);
                 }
                 catch (e) {
-                    console.error(`Could not parse package.json for ${repoInfo.name}: ${e}`);
+                    error(`Could not parse package.json for ${repoInfo.name}: ${e}`);
                     process.exit(-1);
                 }
                 // At this point, we know we have a valid repo, so save it
@@ -74,7 +92,7 @@ function init(newConfig, cb) {
                 if (repoInfo.packageJSON.types) {
                     fs_1.exists(path_1.join(repoInfo.path, repoInfo.packageJSON.types), (typeDeclarationsExist) => {
                         if (!typeDeclarationsExist) {
-                            console.error(`Type declaration file "${repoInfo.packageJSON.types}" does not exist`);
+                            error(`Type declaration file "${repoInfo.packageJSON.types}" does not exist`);
                             process.exit(-1);
                         }
                         repoInfo.typeDeclarationPath = repoInfo.packageJSON.types;
@@ -101,8 +119,28 @@ function init(newConfig, cb) {
     });
 }
 exports.init = init;
-// OH OH OH, new tool that pulls in type declaration files and automatically generates raspi-types package.
-// Look into renaming packages in npm
+function checkForUnpublishedChanges(repoInfo, cb) {
+    child_process_1.exec('git tag -l --sort=-refname', {
+        cwd: repoInfo.path
+    }, (err, stdout, stderr) => {
+        if (err || stderr) {
+            cb(err || new Error(stderr), undefined);
+            return;
+        }
+        cb(undefined, stdout.toString().split('\n')[0] !== repoInfo.packageJSON.version);
+    });
+}
+exports.checkForUnpublishedChanges = checkForUnpublishedChanges;
+function checkForUncommittedChanges(repoPath, cb) {
+    child_process_1.exec('git status', { cwd: repoPath }, (err, stdout, stderr) => {
+        if (err || stderr) {
+            cb(err || new Error(stderr), undefined);
+            return;
+        }
+        cb(undefined, stdout.toString().indexOf('nothing to commit') === -1);
+    });
+}
+exports.checkForUncommittedChanges = checkForUncommittedChanges;
 function getReposInfo() {
     return reposInfo;
 }
@@ -110,7 +148,7 @@ exports.getReposInfo = getReposInfo;
 function recursiveCopy(sourcePath, destinationPath, cb) {
     fs_1.readdir(sourcePath, (err, files) => {
         if (err) {
-            console.error(err);
+            error(err);
             process.exit(-1);
         }
         const filteredFiles = files.filter((file) => ['node_modules', '.git', '.vscode'].indexOf(file) === -1);
@@ -118,7 +156,7 @@ function recursiveCopy(sourcePath, destinationPath, cb) {
             const filePath = path_1.join(sourcePath, file);
             fs_1.stat(filePath, (statErr, stats) => {
                 if (statErr) {
-                    console.error(statErr);
+                    error(statErr);
                     process.exit(-1);
                 }
                 if (stats.isDirectory()) {

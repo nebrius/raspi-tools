@@ -1,3 +1,4 @@
+"use strict";
 /*
 MIT License
 
@@ -21,25 +22,23 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../utils");
 const path_1 = require("path");
 const semver_1 = require("semver");
-const child_process_1 = require("child_process");
 const chalk_1 = require("chalk");
-function run(config) {
+const async_1 = require("async");
+function run() {
     const repos = utils_1.getReposInfo();
     const dependencyMap = {};
     for (const repoName in repos) {
-        const repo = repos[repoName];
+        const repoInfo = repos[repoName];
         // tslint:disable-next-line:no-require-imports
-        const packagejson = require(path_1.join(repo.path, 'package.json'));
-        dependencyMap[repo.name] = {
+        const packagejson = require(path_1.join(repoInfo.path, 'package.json'));
+        dependencyMap[repoInfo.name] = {
             version: packagejson.version,
             dependencies: {},
-            uncommittedChanges: false,
-            unpublishedChanges: false
+            repoInfo
         };
     }
     for (const repoName in repos) {
@@ -57,40 +56,65 @@ function run(config) {
             }
         }
     }
+    const repoTasks = [];
     for (const library in dependencyMap) {
-        const libraryDef = dependencyMap[library];
-        libraryDef.uncommittedChanges = child_process_1.execSync('git status', {
-            cwd: path_1.join(config.workspacePath, library)
-        }).toString().indexOf('nothing to commit') === -1;
-        libraryDef.unpublishedChanges = child_process_1.execSync('git tag -l --sort=-refname', {
-            cwd: path_1.join(config.workspacePath, library)
-        }).toString().split('\n')[0] !== libraryDef.version;
-        let statusHeader = library + ': ' + dependencyMap[library].version +
-            (libraryDef.uncommittedChanges ? ', uncommitted changes ' : '') +
-            (libraryDef.unpublishedChanges ? ', unpublished changes' : '');
-        if (libraryDef.uncommittedChanges || libraryDef.unpublishedChanges) {
-            statusHeader = chalk_1.red(statusHeader);
-        }
-        console.log(statusHeader);
-        for (const dep in libraryDef.dependencies) {
-            libraryDef.dependencies[dep].currentVersion = dependencyMap[dep].version;
-            libraryDef.dependencies[dep].upToDate = semver_1.satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
-            let status;
-            if (libraryDef.dependencies[dep].upToDate) {
-                status = '  ' + dep + '';
-            }
-            else {
-                status = '  ' + dep;
-                for (let i = status.length; i < 20; i++) {
-                    status += ' ';
+        repoTasks.push((next) => {
+            const libraryDef = dependencyMap[library];
+            async_1.series([
+                (changesNext) => {
+                    utils_1.checkForUnpublishedChanges(libraryDef.repoInfo, (err, hasChanges) => {
+                        if (err) {
+                            changesNext(err);
+                            return;
+                        }
+                        changesNext(undefined, hasChanges);
+                    });
+                },
+                (changesNext) => {
+                    utils_1.checkForUncommittedChanges(libraryDef.repoInfo.path, (err, hasChanges) => {
+                        if (err) {
+                            changesNext(err);
+                            return;
+                        }
+                        changesNext(undefined, hasChanges);
+                    });
                 }
-                status += 'current: ' + libraryDef.dependencies[dep].currentVersion + '   package: ' + libraryDef.dependencies[dep].version;
-                status = chalk_1.red(status);
-            }
-            console.log(status);
-        }
-        console.log('');
+            ], (err, results) => {
+                if (err) {
+                    next(err, undefined);
+                    return;
+                }
+                const [hasUnpublishedChanges, hasUncommittedChanges] = results;
+                let statusHeader = library + ': ' + dependencyMap[library].version +
+                    (hasUncommittedChanges ? ', uncommitted changes ' : '') +
+                    (hasUnpublishedChanges ? ', unpublished changes' : '');
+                if (hasUncommittedChanges || hasUnpublishedChanges) {
+                    statusHeader = chalk_1.red(statusHeader);
+                }
+                utils_1.log(statusHeader);
+                for (const dep in libraryDef.dependencies) {
+                    libraryDef.dependencies[dep].currentVersion = dependencyMap[dep].version;
+                    libraryDef.dependencies[dep].upToDate = semver_1.satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
+                    let status;
+                    if (libraryDef.dependencies[dep].upToDate) {
+                        status = '  ' + dep + '';
+                    }
+                    else {
+                        status = '  ' + dep;
+                        for (let i = status.length; i < 20; i++) {
+                            status += ' ';
+                        }
+                        status += 'current: ' + libraryDef.dependencies[dep].currentVersion + '   package: ' + libraryDef.dependencies[dep].version;
+                        status = chalk_1.red(status);
+                    }
+                    utils_1.log(status);
+                }
+                utils_1.log('');
+                next(undefined, undefined);
+            });
+        });
     }
+    async_1.parallel(repoTasks, () => { });
 }
 exports.run = run;
 //# sourceMappingURL=analyze_deps.js.map

@@ -24,11 +24,10 @@ SOFTWARE.
 
 import * as yargs from 'yargs';
 import { run as runAnalyzeDeps } from './commands/analyze_deps';
-import { run as runUpdateTypes } from './commands/update_types';
-import { run as runInstallDevDeps } from './commands/install_dev_deps';
+import { run as runGenerateTypes } from './commands/generate_types';
 import { run as runSync } from './commands/sync';
 import { run as runPublish } from './commands/publish';
-import { init, getRepoNameForCWD, IConfig } from './utils'
+import { init, getRepoNameForCWD, IConfig, error } from './utils'
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import * as homeDir from 'user-home';
@@ -36,16 +35,20 @@ import * as homeDir from 'user-home';
 const CONFIG_FILE_PATH = join(homeDir, '.raspi-tools.rc');
 
 if (!existsSync(CONFIG_FILE_PATH)) {
-  console.error(`Error: config file "${CONFIG_FILE_PATH}" is missing`);
+  error(`Config file "${CONFIG_FILE_PATH}" is missing`);
   process.exit(-1);
 }
 const config: IConfig = JSON.parse(readFileSync(CONFIG_FILE_PATH, 'utf8'));
 if (!config.workspacePath) {
-  console.error(`Error: missing config entry "workspacePath"`);
+  error(`Missing config entry "workspacePath"`);
   process.exit(-1);
 }
 if (!existsSync(config.workspacePath)) {
-  console.error(`Error: workspace path "${config.workspacePath}" does not exist`);
+  error(`Workspace path "${config.workspacePath}" does not exist`);
+  process.exit(-1);
+}
+if (!existsSync(config.definitelyTypedPath)) {
+  error(`DefinitelyTyped path "${config.definitelyTypedPath}" does not exist`);
   process.exit(-1);
 }
 
@@ -60,29 +63,18 @@ init(config, () => {
         return yargs;
       },
       handler() {
-        runAnalyzeDeps(config);
+        runAnalyzeDeps();
       }
     })
     .command({
-      command: 'update-types',
-      aliases: [ 't' ],
-      describe: 'Updates the type definition files for all modules',
+      command: 'generate-types',
+      aliases: [ 'g' ],
+      describe: 'Generates the DefinitelyTyped files for all modules',
       builder(yargs) {
         return yargs;
       },
       handler() {
-        runUpdateTypes();
-      }
-    })
-    .command({
-      command: 'install-dev-deps',
-      aliases: [ 'i' ],
-      describe: 'Installs developer dependencies necessary to build Raspi IO on a non-Raspberry Pi',
-      builder(yargs) {
-        return yargs;
-      },
-      handler() {
-        runInstallDevDeps();
+        runGenerateTypes(config);
       }
     })
     .command({
