@@ -30,13 +30,13 @@ import { generateTypeDefinition } from './generate_types';
 
 export function run(config: IConfig, repo: string) {
   const repoPath = join(config.workspacePath, repo);
-  const reposInfo = getReposInfo();
-  const version = reposInfo[repo].packageJSON.version;
+  const repoInfo = getReposInfo()[repo];
+  const version = repoInfo.packageJSON.version;
 
   log(`Publishing v${version} of ${repo}\n`);
   series([
     (next) => {
-      checkForUncommittedChanges(reposInfo[repo].path, (err, hasChanges) => {
+      checkForUncommittedChanges(repoInfo.path, (err, hasChanges) => {
         if (err) {
           next(err);
           return;
@@ -78,8 +78,12 @@ export function run(config: IConfig, repo: string) {
       }).on('close', next);
     },
     (next) => {
+      if (!repoInfo.typeDeclarationPath) {
+        next();
+        return;
+      }
       log('\nGenerating DefinitelyTyped definition file\n');
-      generateTypeDefinition(reposInfo[repo], config, (getTypeDefinitionErr, definitionFilePath) => {
+      generateTypeDefinition(repoInfo, config, (getTypeDefinitionErr, definitionFilePath) => {
         if (getTypeDefinitionErr) {
           error(getTypeDefinitionErr);
           next(getTypeDefinitionErr);

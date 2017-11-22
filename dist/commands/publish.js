@@ -30,12 +30,12 @@ const async_1 = require("async");
 const generate_types_1 = require("./generate_types");
 function run(config, repo) {
     const repoPath = path_1.join(config.workspacePath, repo);
-    const reposInfo = utils_1.getReposInfo();
-    const version = reposInfo[repo].packageJSON.version;
+    const repoInfo = utils_1.getReposInfo()[repo];
+    const version = repoInfo.packageJSON.version;
     utils_1.log(`Publishing v${version} of ${repo}\n`);
     async_1.series([
         (next) => {
-            utils_1.checkForUncommittedChanges(reposInfo[repo].path, (err, hasChanges) => {
+            utils_1.checkForUncommittedChanges(repoInfo.path, (err, hasChanges) => {
                 if (err) {
                     next(err);
                     return;
@@ -77,8 +77,12 @@ function run(config, repo) {
             }).on('close', next);
         },
         (next) => {
+            if (!repoInfo.typeDeclarationPath) {
+                next();
+                return;
+            }
             utils_1.log('\nGenerating DefinitelyTyped definition file\n');
-            generate_types_1.generateTypeDefinition(reposInfo[repo], config, (getTypeDefinitionErr, definitionFilePath) => {
+            generate_types_1.generateTypeDefinition(repoInfo, config, (getTypeDefinitionErr, definitionFilePath) => {
                 if (getTypeDefinitionErr) {
                     utils_1.error(getTypeDefinitionErr);
                     next(getTypeDefinitionErr);
