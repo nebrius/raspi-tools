@@ -25,8 +25,10 @@ SOFTWARE.
 import { getReposInfo, IRepoInfo, log, checkForUnpublishedChanges, checkForUncommittedChanges } from '../utils';
 import { join } from 'path';
 import { satisfies } from 'semver';
-import { red } from 'chalk';
 import { series, parallel, AsyncFunction } from 'async';
+import * as chalk from 'chalk';
+
+const { red } = chalk.default;
 
 interface IDependencyEntry {
   version: string;
@@ -46,6 +48,9 @@ export function run() {
   const dependencyMap: { [ dependency: string ]: IDependencyMapEntry } = {};
 
   for (const repoName in repos) {
+    if (!repos.hasOwnProperty(repoName)) {
+      continue;
+    }
     const repoInfo = repos[repoName];
     // tslint:disable-next-line:no-require-imports
     const packagejson = require(join(repoInfo.path, 'package.json'));
@@ -57,6 +62,9 @@ export function run() {
   }
 
   for (const repoName in repos) {
+    if (!repos.hasOwnProperty(repoName)) {
+      continue;
+    }
     const repo = repos[repoName];
     // tslint:disable-next-line:no-require-imports
     const packagejson = require(join(repo.path, 'package.json'));
@@ -72,8 +80,11 @@ export function run() {
     }
   }
 
-  const repoTasks: AsyncFunction<undefined, Error | undefined>[] = [];
+  const repoTasks: Array<AsyncFunction<undefined, Error | undefined>> = [];
   for (const library in dependencyMap) {
+    if (!dependencyMap.hasOwnProperty(library)) {
+      continue;
+    }
     repoTasks.push((next: (err: Error | undefined, result: undefined) => void) => {
       const libraryDef = dependencyMap[library];
 
@@ -111,8 +122,12 @@ export function run() {
         log(statusHeader);
 
         for (const dep in libraryDef.dependencies) {
+          if (!libraryDef.dependencies.hasOwnProperty(dep)) {
+            continue;
+          }
           libraryDef.dependencies[dep].currentVersion = dependencyMap[dep].version;
-          libraryDef.dependencies[dep].upToDate = satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
+          libraryDef.dependencies[dep].upToDate =
+            satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
           let status;
           if (libraryDef.dependencies[dep].upToDate) {
             status = '  ' + dep + '';
@@ -121,7 +136,8 @@ export function run() {
             for (let i = status.length; i < 20; i++) {
               status += ' ';
             }
-            status += 'current: ' + libraryDef.dependencies[dep].currentVersion + '   package: ' + libraryDef.dependencies[dep].version;
+            status += 'current: ' + libraryDef.dependencies[dep].currentVersion +
+              '   package: ' + libraryDef.dependencies[dep].version;
             status = red(status);
           }
           log(status);
@@ -131,5 +147,5 @@ export function run() {
       });
     });
   }
-  parallel(repoTasks, () => {});
+  parallel(repoTasks);
 }

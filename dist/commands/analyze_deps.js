@@ -26,12 +26,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../utils");
 const path_1 = require("path");
 const semver_1 = require("semver");
-const chalk_1 = require("chalk");
 const async_1 = require("async");
+const chalk = require("chalk");
+const { red } = chalk.default;
 function run() {
     const repos = utils_1.getReposInfo();
     const dependencyMap = {};
     for (const repoName in repos) {
+        if (!repos.hasOwnProperty(repoName)) {
+            continue;
+        }
         const repoInfo = repos[repoName];
         // tslint:disable-next-line:no-require-imports
         const packagejson = require(path_1.join(repoInfo.path, 'package.json'));
@@ -42,6 +46,9 @@ function run() {
         };
     }
     for (const repoName in repos) {
+        if (!repos.hasOwnProperty(repoName)) {
+            continue;
+        }
         const repo = repos[repoName];
         // tslint:disable-next-line:no-require-imports
         const packagejson = require(path_1.join(repo.path, 'package.json'));
@@ -58,6 +65,9 @@ function run() {
     }
     const repoTasks = [];
     for (const library in dependencyMap) {
+        if (!dependencyMap.hasOwnProperty(library)) {
+            continue;
+        }
         repoTasks.push((next) => {
             const libraryDef = dependencyMap[library];
             async_1.series([
@@ -89,12 +99,16 @@ function run() {
                     (hasUncommittedChanges ? ', uncommitted changes ' : '') +
                     (hasUnpublishedChanges ? ', unpublished changes' : '');
                 if (hasUncommittedChanges || hasUnpublishedChanges) {
-                    statusHeader = chalk_1.red(statusHeader);
+                    statusHeader = red(statusHeader);
                 }
                 utils_1.log(statusHeader);
                 for (const dep in libraryDef.dependencies) {
+                    if (!libraryDef.dependencies.hasOwnProperty(dep)) {
+                        continue;
+                    }
                     libraryDef.dependencies[dep].currentVersion = dependencyMap[dep].version;
-                    libraryDef.dependencies[dep].upToDate = semver_1.satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
+                    libraryDef.dependencies[dep].upToDate =
+                        semver_1.satisfies(dependencyMap[dep].version, libraryDef.dependencies[dep].version);
                     let status;
                     if (libraryDef.dependencies[dep].upToDate) {
                         status = '  ' + dep + '';
@@ -104,8 +118,9 @@ function run() {
                         for (let i = status.length; i < 20; i++) {
                             status += ' ';
                         }
-                        status += 'current: ' + libraryDef.dependencies[dep].currentVersion + '   package: ' + libraryDef.dependencies[dep].version;
-                        status = chalk_1.red(status);
+                        status += 'current: ' + libraryDef.dependencies[dep].currentVersion +
+                            '   package: ' + libraryDef.dependencies[dep].version;
+                        status = red(status);
                     }
                     utils_1.log(status);
                 }
@@ -114,7 +129,7 @@ function run() {
             });
         });
     }
-    async_1.parallel(repoTasks, () => { });
+    async_1.parallel(repoTasks);
 }
 exports.run = run;
 //# sourceMappingURL=analyze_deps.js.map

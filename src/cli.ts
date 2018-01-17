@@ -27,7 +27,7 @@ import { run as runAnalyzeDeps } from './commands/analyze_deps';
 import { run as runGenerateTypes } from './commands/generate_types';
 import { run as runSync } from './commands/sync';
 import { run as runPublish } from './commands/publish';
-import { init, getRepoNameForCWD, IConfig, error } from './utils'
+import { init, getRepoNameForCWD, IConfig, error } from './utils';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import * as homeDir from 'user-home';
@@ -59,8 +59,8 @@ init(config, () => {
       command: 'analyze-deps',
       aliases: [ 'd' ],
       describe: 'Analyze the current state of dependencies',
-      builder(yargs) {
-        return yargs;
+      builder(args) {
+        return args;
       },
       handler() {
         runAnalyzeDeps();
@@ -70,8 +70,8 @@ init(config, () => {
       command: 'generate-types',
       aliases: [ 'g' ],
       describe: 'Generates the DefinitelyTyped files for all modules',
-      builder(yargs) {
-        return yargs;
+      builder(args) {
+        return args;
       },
       handler() {
         runGenerateTypes(config);
@@ -81,13 +81,13 @@ init(config, () => {
       command: 'sync',
       aliases: [ 's' ],
       describe: 'Syncs a repo to a raspberry pi',
-      builder(yargs) {
+      builder(args) {
         const defaultRepo = getRepoNameForCWD();
         let repoDefaultDescription: string | undefined;
         if (defaultRepo) {
           repoDefaultDescription = `cwd=${defaultRepo}`;
         }
-        return yargs
+        return args
           .option('repo', {
             alias: 'r',
             describe: 'The name of the repo to sync, e.g. "raspi-gpio"',
@@ -109,13 +109,13 @@ init(config, () => {
       command: 'publish',
       aliases: [ 'p' ],
       describe: 'Publishes, syncs, and tags a new version of the specified repo',
-      builder(yargs) {
+      builder(args) {
         const defaultRepo = getRepoNameForCWD();
         let repoDefaultDescription: string | undefined;
         if (defaultRepo) {
           repoDefaultDescription = `cwd=${defaultRepo}`;
         }
-        return yargs
+        return args
           .option('repo', {
             alias: 'r',
             describe: 'The name of the repo to sync, e.g. "raspi-gpio"',

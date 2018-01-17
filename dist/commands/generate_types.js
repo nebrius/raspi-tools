@@ -114,6 +114,9 @@ function generateTypeDefinition(repoInfo, config, cb) {
             let declarationFile = generateHeader(repoInfo) + ts.createPrinter()
                 .printNode(ts.EmitHint.SourceFile, result.transformed[0], sourceFile);
             for (const oldName in renameMap) {
+                if (!renameMap.hasOwnProperty(oldName)) {
+                    continue;
+                }
                 declarationFile = declarationFile.replace(new RegExp(oldName, 'g'), renameMap[oldName]);
             }
             utils_1.log(`Writing declaration file for ${repoInfo.name}`);
@@ -134,12 +137,15 @@ exports.generateTypeDefinition = generateTypeDefinition;
 function run(config) {
     const reposInfo = utils_1.getReposInfo();
     for (const repoName in reposInfo) {
+        if (!reposInfo.hasOwnProperty(repoName)) {
+            continue;
+        }
         const repoInfo = reposInfo[repoName];
         generateTypeDefinition(repoInfo, config, (err, declarationFilePath) => {
             if (!err && declarationFilePath) {
-                utils_1.checkForUncommittedChanges(path_1.dirname(declarationFilePath), (uncommittedChangesErr, hasChanges) => {
-                    if (uncommittedChangesErr) {
-                        utils_1.error(uncommittedChangesErr);
+                utils_1.checkForUncommittedChanges(path_1.dirname(declarationFilePath), (fileChangesErr, hasChanges) => {
+                    if (fileChangesErr) {
+                        utils_1.error(fileChangesErr);
                         return;
                     }
                     if (hasChanges) {

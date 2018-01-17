@@ -28,7 +28,9 @@ import { exec } from 'child_process';
 import { series, parallel } from 'async';
 import * as rimraf from 'rimraf';
 import * as mkdirp from 'mkdirp';
-import { yellow, red } from 'chalk';
+import * as chalk from 'chalk';
+
+const { yellow, red } = chalk.default;
 
 export interface IConfig {
   workspacePath: string;
@@ -107,7 +109,7 @@ export function init(newConfig: IConfig, cb: () => void) {
         }
         try {
           repoInfo.packageJSON = JSON.parse(packgeJSONContents);
-        } catch(e) {
+        } catch (e) {
           error(`Could not parse package.json for ${repoInfo.name}: ${e}`);
           process.exit(-1);
         }
@@ -122,7 +124,7 @@ export function init(newConfig: IConfig, cb: () => void) {
               error(`Type declaration file "${repoInfo.packageJSON.types}" does not exist`);
               process.exit(-1);
             }
-            repoInfo.typeDeclarationPath = <string>repoInfo.packageJSON.types;
+            repoInfo.typeDeclarationPath = repoInfo.packageJSON.types as string;
             next();
           });
         } else {
@@ -132,6 +134,9 @@ export function init(newConfig: IConfig, cb: () => void) {
     });
   }), () => {
     for (const repoName in reposInfo) {
+      if (!reposInfo.hasOwnProperty(repoName)) {
+        continue;
+      }
       const repoInfo = reposInfo[repoName];
       if (repoInfo.packageJSON.dependencies) {
         for (const dep in repoInfo.packageJSON.dependencies) {
@@ -161,10 +166,10 @@ export function checkForUnpublishedChanges(
 }
 
 export function checkForUncommittedChanges(
-  repoPath: string,
+  dirPath: string,
   cb: (err: Error | undefined, hasChanges: boolean | undefined) => void
 ): void {
-  exec('git status', { cwd: repoPath }, (err, stdout, stderr) => {
+  exec(`git status ${dirPath}`, { cwd: dirPath }, (err, stdout, stderr) => {
     if (err || stderr) {
       cb(err || new Error(stderr), undefined);
       return;
@@ -194,11 +199,11 @@ function recursiveCopy(sourcePath: string, destinationPath: string, cb: () => vo
         if (stats.isDirectory()) {
           recursiveCopy(filePath, join(destinationPath, file), next);
         } else {
-          exists(destinationPath, (exists) => {
+          exists(destinationPath, (destinationPathExists) => {
             function execute() {
               createReadStream(filePath).pipe(createWriteStream(join(destinationPath, file))).on('finish', next);
             }
-            if (!exists) {
+            if (!destinationPathExists) {
               mkdirp(destinationPath, execute);
             } else {
               execute();
@@ -213,8 +218,8 @@ function recursiveCopy(sourcePath: string, destinationPath: string, cb: () => vo
 export function copyDir(sourcePath: string, destinationPath: string, cb: () => void) {
   series([
     (next) => {
-      exists(destinationPath, (exists) => {
-        if (!exists) {
+      exists(destinationPath, (destinationPathExists) => {
+        if (!destinationPathExists) {
           next();
           return;
         }

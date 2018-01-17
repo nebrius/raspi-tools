@@ -104,7 +104,7 @@ export function generateTypeDefinition(
       return;
     }
 
-    const typePath = join(repoInfo.path, <string>repoInfo.packageJSON.types);
+    const typePath = join(repoInfo.path, repoInfo.packageJSON.types as string);
     readFile(typePath, (packageReadErr, sourceFileContents) => {
       if (packageReadErr) {
         error(`Could not read declaration file for ${repoInfo.name}`);
@@ -145,6 +145,9 @@ export function generateTypeDefinition(
         .printNode(ts.EmitHint.SourceFile, result.transformed[0], sourceFile);
 
       for (const oldName in renameMap) {
+        if (!renameMap.hasOwnProperty(oldName)) {
+          continue;
+        }
         declarationFile = declarationFile.replace(new RegExp(oldName, 'g'), renameMap[oldName]);
       }
 
@@ -167,12 +170,15 @@ export function generateTypeDefinition(
 export function run(config: IConfig) {
   const reposInfo = getReposInfo();
   for (const repoName in reposInfo) {
+    if (!reposInfo.hasOwnProperty(repoName)) {
+      continue;
+    }
     const repoInfo = reposInfo[repoName];
     generateTypeDefinition(repoInfo, config, (err, declarationFilePath) => {
       if (!err && declarationFilePath) {
-        checkForUncommittedChanges(dirname(declarationFilePath), (uncommittedChangesErr, hasChanges) => {
-          if (uncommittedChangesErr) {
-            error(uncommittedChangesErr);
+        checkForUncommittedChanges(dirname(declarationFilePath), (fileChangesErr, hasChanges) => {
+          if (fileChangesErr) {
+            error(fileChangesErr);
             return;
           }
           if (hasChanges) {

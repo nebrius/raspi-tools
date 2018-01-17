@@ -26,7 +26,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const child_process_1 = require("child_process");
 const path_1 = require("path");
 function run(config, repo, ip) {
-    child_process_1.spawn('rsync', ['-avz', '-e', 'ssh', '--exclude', 'node_modules', path_1.join(config.workspacePath, repo), `pi@${ip}:/home/pi`], {
+    child_process_1.spawn('rsync', [
+        '-avz', '-e', 'ssh', '--exclude', 'node_modules',
+        path_1.join(config.workspacePath, repo), `pi@${ip}:/home/pi`
+    ], {
         stdio: 'inherit'
     });
 }

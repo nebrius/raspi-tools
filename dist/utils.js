@@ -29,7 +29,8 @@ const child_process_1 = require("child_process");
 const async_1 = require("async");
 const rimraf = require("rimraf");
 const mkdirp = require("mkdirp");
-const chalk_1 = require("chalk");
+const chalk = require("chalk");
+const { yellow, red } = chalk.default;
 let config;
 const reposInfo = {};
 function log(message) {
@@ -37,15 +38,15 @@ function log(message) {
 }
 exports.log = log;
 function warn(message) {
-    console.warn(chalk_1.yellow(`WARNING: ${message}`));
+    console.warn(yellow(`WARNING: ${message}`));
 }
 exports.warn = warn;
 function error(message) {
     if (typeof message === 'string') {
-        console.error(chalk_1.red(`ERROR: ${message}`));
+        console.error(red(`ERROR: ${message}`));
     }
     else {
-        console.error(chalk_1.red(message.toString()));
+        console.error(red(message.toString()));
     }
 }
 exports.error = error;
@@ -106,6 +107,9 @@ function init(newConfig, cb) {
         });
     }), () => {
         for (const repoName in reposInfo) {
+            if (!reposInfo.hasOwnProperty(repoName)) {
+                continue;
+            }
             const repoInfo = reposInfo[repoName];
             if (repoInfo.packageJSON.dependencies) {
                 for (const dep in repoInfo.packageJSON.dependencies) {
@@ -131,8 +135,8 @@ function checkForUnpublishedChanges(repoInfo, cb) {
     });
 }
 exports.checkForUnpublishedChanges = checkForUnpublishedChanges;
-function checkForUncommittedChanges(repoPath, cb) {
-    child_process_1.exec('git status', { cwd: repoPath }, (err, stdout, stderr) => {
+function checkForUncommittedChanges(dirPath, cb) {
+    child_process_1.exec(`git status ${dirPath}`, { cwd: dirPath }, (err, stdout, stderr) => {
         if (err || stderr) {
             cb(err || new Error(stderr), undefined);
             return;
@@ -163,11 +167,11 @@ function recursiveCopy(sourcePath, destinationPath, cb) {
                     recursiveCopy(filePath, path_1.join(destinationPath, file), next);
                 }
                 else {
-                    fs_1.exists(destinationPath, (exists) => {
+                    fs_1.exists(destinationPath, (destinationPathExists) => {
                         function execute() {
                             fs_1.createReadStream(filePath).pipe(fs_1.createWriteStream(path_1.join(destinationPath, file))).on('finish', next);
                         }
-                        if (!exists) {
+                        if (!destinationPathExists) {
                             mkdirp(destinationPath, execute);
                         }
                         else {
@@ -182,8 +186,8 @@ function recursiveCopy(sourcePath, destinationPath, cb) {
 function copyDir(sourcePath, destinationPath, cb) {
     async_1.series([
         (next) => {
-            fs_1.exists(destinationPath, (exists) => {
-                if (!exists) {
+            fs_1.exists(destinationPath, (destinationPathExists) => {
+                if (!destinationPathExists) {
                     next();
                     return;
                 }

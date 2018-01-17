@@ -27,7 +27,10 @@ import { spawn } from 'child_process';
 import { join } from 'path';
 
 export function run(config: IConfig, repo: string, ip: string) {
-  spawn('rsync', [ '-avz', '-e', 'ssh', '--exclude', 'node_modules', join(config.workspacePath, repo), `pi@${ip}:/home/pi` ], {
+  spawn('rsync', [
+    '-avz', '-e', 'ssh', '--exclude', 'node_modules',
+    join(config.workspacePath, repo), `pi@${ip}:/home/pi`
+  ], {
     stdio: 'inherit'
   });
 }

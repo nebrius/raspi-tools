@@ -57,8 +57,8 @@ utils_1.init(config, () => {
         command: 'analyze-deps',
         aliases: ['d'],
         describe: 'Analyze the current state of dependencies',
-        builder(yargs) {
-            return yargs;
+        builder(args) {
+            return args;
         },
         handler() {
             analyze_deps_1.run();
@@ -68,8 +68,8 @@ utils_1.init(config, () => {
         command: 'generate-types',
         aliases: ['g'],
         describe: 'Generates the DefinitelyTyped files for all modules',
-        builder(yargs) {
-            return yargs;
+        builder(args) {
+            return args;
         },
         handler() {
             generate_types_1.run(config);
@@ -79,13 +79,13 @@ utils_1.init(config, () => {
         command: 'sync',
         aliases: ['s'],
         describe: 'Syncs a repo to a raspberry pi',
-        builder(yargs) {
+        builder(args) {
             const defaultRepo = utils_1.getRepoNameForCWD();
             let repoDefaultDescription;
             if (defaultRepo) {
                 repoDefaultDescription = `cwd=${defaultRepo}`;
             }
-            return yargs
+            return args
                 .option('repo', {
                 alias: 'r',
                 describe: 'The name of the repo to sync, e.g. "raspi-gpio"',
@@ -107,13 +107,13 @@ utils_1.init(config, () => {
         command: 'publish',
         aliases: ['p'],
         describe: 'Publishes, syncs, and tags a new version of the specified repo',
-        builder(yargs) {
+        builder(args) {
             const defaultRepo = utils_1.getRepoNameForCWD();
             let repoDefaultDescription;
             if (defaultRepo) {
                 repoDefaultDescription = `cwd=${defaultRepo}`;
             }
-            return yargs
+            return args
                 .option('repo', {
                 alias: 'r',
                 describe: 'The name of the repo to sync, e.g. "raspi-gpio"',
