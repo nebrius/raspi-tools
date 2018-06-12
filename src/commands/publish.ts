@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 import { IConfig, getReposInfo, log, warn, error, checkForUncommittedChanges } from '../utils';
-import { spawn } from 'child_process';
+import * as spawn from 'cross-spawn';
 import { join, dirname } from 'path';
 import { series } from 'async';
 import { generateTypeDefinition } from './generate_types';
