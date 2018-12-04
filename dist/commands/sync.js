@@ -28,7 +28,7 @@ const path_1 = require("path");
 function run(config, repo, ip) {
     spawn('rsync', [
         '-avz', '-e', 'ssh', '--exclude', 'node_modules',
-        path_1.join(config.workspacePath, repo), `pi@${ip}:/home/pi`
+        path_1.join(config.workspacePath, repo), `pi@[${ip}]:/home/pi`
     ], {
         stdio: 'inherit'
     });
