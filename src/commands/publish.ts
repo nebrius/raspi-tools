@@ -43,7 +43,7 @@ export function run(config: IConfig, repo: string) {
         }
         if (hasChanges) {
           warn(`Uncommitted changes detected, skipping`);
-          next(`Uncommitted changes detected, skipping`);
+          next(new Error(`Uncommitted changes detected, skipping`));
           return;
         }
         next();

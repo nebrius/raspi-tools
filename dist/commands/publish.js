@@ -42,7 +42,7 @@ function run(config, repo) {
                 }
                 if (hasChanges) {
                     utils_1.warn(`Uncommitted changes detected, skipping`);
-                    next(`Uncommitted changes detected, skipping`);
+                    next(new Error(`Uncommitted changes detected, skipping`));
                     return;
                 }
                 next();
