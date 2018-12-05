@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 import { IConfig } from '../utils';
-import * as spawn from 'cross-spawn';
+import { spawn } from 'child_process';
 import { join } from 'path';
 
 export function run(config: IConfig, repo: string, ip: string) {

@@ -25,7 +25,7 @@ SOFTWARE.
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = require("fs");
 const path_1 = require("path");
-const spawn = require("cross-spawn");
+const child_process_1 = require("child_process");
 const async_1 = require("async");
 const rimraf = require("rimraf");
 const mkdirp = require("mkdirp");
@@ -33,21 +33,6 @@ const chalk = require("chalk");
 const { yellow, red } = chalk.default;
 let config;
 const reposInfo = {};
-function crossSpawn(command, args, cwd, cb) {
-    let stderr = '';
-    let stdout = '';
-    const spawnProcess = spawn(command, args, { cwd });
-    spawnProcess.stdout.on('data', (chunk) => {
-        stdout += chunk.toString();
-    });
-    spawnProcess.stderr.on('data', (chunk) => {
-        stderr += chunk.toString();
-    });
-    spawnProcess.on('exit', (code) => {
-        cb(code ? new Error(`Process exited with code ${code}`) : undefined, stdout, stderr);
-    });
-}
-exports.crossSpawn = crossSpawn;
 function log(message) {
     console.log(message);
 }
@@ -139,7 +124,7 @@ function init(newConfig, cb) {
 }
 exports.init = init;
 function checkForUnpublishedChanges(repoInfo, cb) {
-    crossSpawn('git', ['tag', '-l', '--sort=-refname'], repoInfo.path, (err, stdout, stderr) => {
+    child_process_1.exec('git tag -l --sort=-refname', { cwd: repoInfo.path }, (err, stdout, stderr) => {
         if (err || stderr) {
             cb(err || new Error(stderr), undefined);
             return;
@@ -149,11 +134,12 @@ function checkForUnpublishedChanges(repoInfo, cb) {
 }
 exports.checkForUnpublishedChanges = checkForUnpublishedChanges;
 function checkForUncommittedChanges(dirPath, cb) {
-    crossSpawn('git', ['status', dirPath], dirPath, (err, stdout, stderr) => {
+    child_process_1.exec('git status', { cwd: dirPath }, (err, stdout, stderr) => {
         if (err || stderr) {
             cb(err || new Error(stderr), undefined);
             return;
         }
+        // console.log(dirPath, stdout);
         cb(undefined, stdout.toString().indexOf('nothing to commit') === -1);
     });
 }

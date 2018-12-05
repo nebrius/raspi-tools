@@ -24,7 +24,7 @@ SOFTWARE.
 
 import { readdirSync, exists, readdir, readFile, stat, createReadStream, createWriteStream } from 'fs';
 import { join, basename } from 'path';
-import * as spawn from 'cross-spawn';
+import { exec } from 'child_process';
 import { series, parallel } from 'async';
 import * as rimraf from 'rimraf';
 import * as mkdirp from 'mkdirp';
@@ -54,26 +54,6 @@ export interface IRepoInfo {
 
 let config: IConfig;
 const reposInfo: { [ repoName: string ]: IRepoInfo } = {};
-
-export function crossSpawn(
-  command: string,
-  args: string[],
-  cwd: string,
-  cb: (err: Error | undefined, stdout: string, stderr: string) => void
-): void {
-  let stderr = '';
-  let stdout = '';
-  const spawnProcess = spawn(command, args, { cwd });
-  spawnProcess.stdout.on('data', (chunk) => {
-    stdout += chunk.toString();
-  });
-  spawnProcess.stderr.on('data', (chunk) => {
-    stderr += chunk.toString();
-  });
-  spawnProcess.on('exit', (code) => {
-    cb(code ? new Error(`Process exited with code ${code}`) : undefined, stdout, stderr);
-  });
-}
 
 export function log(message: string): void {
   console.log(message);
@@ -174,7 +154,7 @@ export function checkForUnpublishedChanges(
   repoInfo: IRepoInfo,
   cb: (err: Error | undefined, hasChanges: boolean | undefined) => void
 ): void {
-  crossSpawn('git', [ 'tag', '-l', '--sort=-refname' ], repoInfo.path, (err, stdout, stderr) => {
+  exec('git tag -l --sort=-refname', { cwd: repoInfo.path }, (err, stdout, stderr) => {
     if (err || stderr) {
       cb(err || new Error(stderr), undefined);
       return;
@@ -187,11 +167,12 @@ export function checkForUncommittedChanges(
   dirPath: string,
   cb: (err: Error | undefined, hasChanges: boolean | undefined) => void
 ): void {
-  crossSpawn('git', [ 'status', dirPath], dirPath, (err, stdout, stderr) => {
+  exec('git status', { cwd: dirPath }, (err, stdout, stderr) => {
     if (err || stderr) {
       cb(err || new Error(stderr), undefined);
       return;
     }
+    // console.log(dirPath, stdout);
     cb(undefined, stdout.toString().indexOf('nothing to commit') === -1);
   });
 }

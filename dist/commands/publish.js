@@ -24,7 +24,7 @@ SOFTWARE.
 */
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../utils");
-const spawn = require("cross-spawn");
+const child_process_1 = require("child_process");
 const path_1 = require("path");
 const async_1 = require("async");
 const generate_types_1 = require("./generate_types");
@@ -50,28 +50,28 @@ function run(config, repo) {
         },
         (next) => {
             utils_1.log('Pushing master to git\n');
-            spawn('git', ['push', 'origin', 'master'], {
+            child_process_1.spawn('git', ['push', 'origin', 'master'], {
                 stdio: 'inherit',
                 cwd: repoPath
             }).on('close', next);
         },
         (next) => {
             utils_1.log('\nPublishing to npm\n');
-            spawn('npm', ['publish'], {
+            child_process_1.spawn('npm', ['publish'], {
                 stdio: 'inherit',
                 cwd: repoPath
             }).on('close', next);
         },
         (next) => {
             utils_1.log('\nTagging release\n');
-            spawn('git', ['tag', '-a', version, '-m', `Published v${version} to npm`], {
+            child_process_1.spawn('git', ['tag', '-a', version, '-m', `Published v${version} to npm`], {
                 stdio: 'inherit',
                 cwd: repoPath
             }).on('close', next);
         },
         (next) => {
             utils_1.log('Pushing tags to git\n');
-            spawn('git', ['push', 'origin', '--tags'], {
+            child_process_1.spawn('git', ['push', 'origin', '--tags'], {
                 stdio: 'inherit',
                 cwd: repoPath
             }).on('close', next);

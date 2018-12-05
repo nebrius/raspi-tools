@@ -23,10 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 Object.defineProperty(exports, "__esModule", { value: true });
-const spawn = require("cross-spawn");
+const child_process_1 = require("child_process");
 const path_1 = require("path");
 function run(config, repo, ip) {
-    spawn('rsync', [
+    child_process_1.spawn('rsync', [
         '-avz', '-e', 'ssh', '--exclude', 'node_modules',
         path_1.join(config.workspacePath, repo), `pi@[${ip}]:/home/pi`
     ], {
