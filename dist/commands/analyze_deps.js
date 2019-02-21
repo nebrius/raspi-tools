@@ -101,7 +101,7 @@ function run() {
                 if (hasUncommittedChanges || hasUnpublishedChanges) {
                     statusHeader = red(statusHeader);
                 }
-                utils_1.log(statusHeader);
+                let packageStatus = `${statusHeader}\n`;
                 for (const dep in libraryDef.dependencies) {
                     if (!libraryDef.dependencies.hasOwnProperty(dep)) {
                         continue;
@@ -122,14 +122,24 @@ function run() {
                             '   package: ' + libraryDef.dependencies[dep].version;
                         status = red(status);
                     }
-                    utils_1.log(status);
+                    packageStatus += `${status}\n`;
                 }
-                utils_1.log('');
-                next(undefined, undefined);
+                next(undefined, { repo: library, status: packageStatus });
             });
         });
     }
-    async_1.parallel(repoTasks);
+    async_1.parallel(repoTasks, (err, results) => {
+        if (err) {
+            console.error(err);
+            process.exit(-1);
+        }
+        else if (results) {
+            utils_1.log(results
+                .sort((a, b) => a.repo.charCodeAt(0) - b.repo.charCodeAt(0))
+                .map((result) => result.status)
+                .join('\n'));
+        }
+    });
 }
 exports.run = run;
 //# sourceMappingURL=analyze_deps.js.map

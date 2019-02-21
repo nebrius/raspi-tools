@@ -80,12 +80,17 @@ export function run() {
     }
   }
 
-  const repoTasks: Array<AsyncFunction<undefined, Error | undefined>> = [];
+  interface IResult {
+    repo: string;
+    status: string;
+  }
+
+  const repoTasks: Array<AsyncFunction<IResult, Error | undefined>> = [];
   for (const library in dependencyMap) {
     if (!dependencyMap.hasOwnProperty(library)) {
       continue;
     }
-    repoTasks.push((next: (err: Error | undefined, result: undefined) => void) => {
+    repoTasks.push((next: (err: Error | undefined, result: IResult | undefined) => void) => {
       const libraryDef = dependencyMap[library];
 
       series([
@@ -119,8 +124,8 @@ export function run() {
         if (hasUncommittedChanges || hasUnpublishedChanges) {
           statusHeader = red(statusHeader);
         }
-        log(statusHeader);
 
+        let packageStatus = `${statusHeader}\n`;
         for (const dep in libraryDef.dependencies) {
           if (!libraryDef.dependencies.hasOwnProperty(dep)) {
             continue;
@@ -140,12 +145,21 @@ export function run() {
               '   package: ' + libraryDef.dependencies[dep].version;
             status = red(status);
           }
-          log(status);
+          packageStatus += `${status}\n`;
         }
-        log('');
-        next(undefined, undefined);
+        next(undefined, { repo: library, status: packageStatus });
       });
     });
   }
-  parallel(repoTasks);
+  parallel(repoTasks, (err, results) => {
+    if (err) {
+      console.error(err);
+      process.exit(-1);
+    } else if (results) {
+      log((results as IResult[])
+        .sort((a, b) => a.repo.charCodeAt(0) - b.repo.charCodeAt(0))
+        .map((result) => result.status)
+        .join('\n'));
+    }
+  });
 }
