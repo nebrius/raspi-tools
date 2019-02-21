@@ -135,7 +135,7 @@ function run() {
         }
         else if (results) {
             utils_1.log(results
-                .sort((a, b) => a.repo.charCodeAt(0) - b.repo.charCodeAt(0))
+                .sort((a, b) => a.repo > b.repo ? 1 : -1)
                 .map((result) => result.status)
                 .join('\n'));
         }
