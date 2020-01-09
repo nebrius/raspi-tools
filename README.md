@@ -2,6 +2,15 @@
 
 A collection of tools for developing raspi-io. Run `raspi-tools --help` for instructions on using raspi-tools.
 
+Create a config file at `~/.raspi-tools.rc` with the following contents before using:
+
+```JSON
+{
+  "workspacePath": "/path/to/raspi/parent/folder",
+  "definitelyTypedPath": "/path/to/DefinitelyTyped"
+}
+```
+
 ## License
 
 MIT License
